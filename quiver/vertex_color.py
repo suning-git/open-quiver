@@ -7,6 +7,7 @@ with vertex i' labeled n+i.
 
 from __future__ import annotations
 
+from enum import Enum, auto
 from .core import IceQuiver
 
 
@@ -24,6 +25,13 @@ from .core import IceQuiver
 #     if q.frozen != set(range(n + 1, m + 1)):
 #         return None
 #     return n
+
+class VColor(Enum):
+    DEFAULT = auto()
+    YELLOW = auto()
+    GREEN = auto()
+    RED = auto()
+    FROZEN = auto()
 
 
 def is_green_framed(q: IceQuiver, k: int) -> bool:
@@ -44,3 +52,17 @@ def is_red_framed(q: IceQuiver, k: int) -> bool:
         if q.arrow_counts.get((k, j), 0) > 0:
             return False
     return True
+
+def vertex_color(quiver: IceQuiver, vid: int) -> VColor:
+    if vid in quiver.frozen:
+        return VColor.FROZEN
+
+    if is_green_framed(quiver, vid):
+        if is_red_framed(quiver, vid):
+            return VColor.YELLOW
+        else:
+            return VColor.GREEN
+    elif is_red_framed(quiver, vid):
+        return VColor.RED
+
+    return VColor.DEFAULT

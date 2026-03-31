@@ -15,7 +15,7 @@ from .io import (
     parse_quiver_edgelist,
     parse_quiver_json,
 )
-from .vertex_color import is_green_framed, is_red_framed
+from .vertex_color import is_green_framed, is_red_framed, VColor, vertex_color
 from .operations import (
     coframe_quiver,
     frame_quiver,
@@ -35,6 +35,8 @@ __all__ = [
     "ice_quiver_from_exmat",
     "is_green_framed",
     "is_red_framed",
+    "VColor",
+    "vertex_color",
     "load_quiver",
     "mutate_ice_quiver",
     "parse_exchange_matrix",

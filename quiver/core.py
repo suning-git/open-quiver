@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 from dataclasses import dataclass
 from typing import Dict, List, Sequence, Set, Tuple, Union
@@ -13,6 +15,127 @@ class IceQuiver:
     frozen: Set[int]
     arrow_counts: ArrowCounts
 
+    def m_total(self) -> int:
+        return len(self.vertices)
+    
+    def n_mutable(self) -> int:
+        return len(self.vertices) - len(self.frozen)
+
+    @staticmethod
+    def empty() -> IceQuiver:
+        """
+        Create an empty IceQuiver with no vertices or arrows.
+        """
+        return IceQuiver(vertices=[], frozen=set(), arrow_counts={})
+    
+    def add_vertex(self, frozen: bool = False) -> tuple[IceQuiver, int]:
+        """
+        Return a new IceQuiver with one additional vertex.
+
+        Vertices are labeled as 1..m. The new vertex gets label m+1.
+
+        Returns:
+            (new_quiver, new_vertex_id)
+        """
+        new_id = self.m_total() + 1
+
+        new_vertices = self.vertices + [new_id]
+        new_frozen = set(self.frozen)
+
+        if frozen:
+            new_frozen.add(new_id)
+
+        return (
+            IceQuiver(
+                vertices=new_vertices,
+                frozen=new_frozen,
+                arrow_counts=dict(self.arrow_counts),
+            ),
+            new_id,
+        )
+    
+    def add_arrow(self, a: int, b: int, count: int = 1) -> IceQuiver:
+        """
+        Return a new IceQuiver with an arrow a -> b.
+        If the arrow already exists, increase its multiplicity.
+        """
+        if a not in self.vertices or b not in self.vertices:
+            raise ValueError("Vertices must exist")
+        
+        if a == b:
+            return self
+
+        new_counts = self.arrow_counts
+
+        if (b, a) in new_counts:
+            cancel = min(count, new_counts[(b, a)])
+
+            new_counts[(b, a)] -= cancel
+            if new_counts[(b, a)] <= 0:
+                del new_counts[(b, a)]
+
+            count -= cancel
+
+        if count > 0:
+            new_counts[(a, b)] = new_counts.get((a, b), 0) + count
+
+        return IceQuiver(
+            vertices=list(self.vertices),
+            frozen=set(self.frozen),
+            arrow_counts=new_counts,
+        )
+
+    def remove_arrow(self, a: int, b: int, count: int = 1) -> IceQuiver:
+        """
+        Decrease multiplicity of arrow a -> b.
+        Remove entry if count becomes zero or negative.
+        """
+        new_counts = self.arrow_counts
+
+        if (a, b) in new_counts:
+            new_counts[(a, b)] -= count
+            if new_counts[(a, b)] <= 0:
+                new_counts.pop((a, b), 0)
+
+        return IceQuiver(
+            vertices=list(self.vertices),
+            frozen=set(self.frozen),
+            arrow_counts=new_counts,
+        )
+    
+    def remove_vertex(self, v: int) -> IceQuiver:
+        if v not in self.vertices:
+            return self
+
+        m = len(self.vertices)
+
+        # map vertices to new vertex number
+        def remap(x: int) -> int:
+            if x < v:
+                return x
+            elif x > v:
+                return x - 1
+            else:
+                raise ValueError("should not map removed vertex")
+
+        new_vertices = list(range(1, m))  # [m-1]
+        new_frozen = {remap(x) for x in self.frozen if x != v}
+        new_counts: ArrowCounts = {}
+
+        for (a, b), c in self.arrow_counts.items():
+            if a == v or b == v:
+                continue
+
+            a2 = remap(a)
+            b2 = remap(b)
+            new_counts[(a2, b2)] = new_counts.get((a2, b2), 0) + c
+
+        return IceQuiver(
+            vertices=new_vertices,
+            frozen=new_frozen,
+            arrow_counts=new_counts,
+        )
+
     def to_dict(self) -> Dict:
         arrows = [
             {"from": a, "to": b, "label": c}
@@ -25,6 +148,26 @@ class IceQuiver:
             "frozen_vertices": sorted(self.frozen),
             "arrows": arrows,
         }
+    
+    def freeze_vertex(self, v: int) -> IceQuiver:
+        if v not in self.vertices:
+            return self
+
+        new_frozen = set(self.frozen)
+        new_frozen.add(v)
+
+        new_counts: ArrowCounts = {}
+
+        for (a, b), c in self.arrow_counts.items():
+            if a in new_frozen and b in new_frozen:
+                continue
+            new_counts[(a, b)] = c
+
+        return IceQuiver(
+            vertices=self.vertices,
+            frozen=new_frozen,
+            arrow_counts=new_counts,
+        )
     
     def to_exmat(self) -> np.ndarray:
         """
