@@ -10,22 +10,6 @@ from __future__ import annotations
 from enum import Enum, auto
 from .core import IceQuiver
 
-
-# def framed_layout_n(q: IceQuiver) -> int | None:
-#     """
-#     If q is a framed layout (vertices 1..2n, frozen exactly {n+1,..,2n}), return n;
-#     otherwise None.
-#     """
-#     m = len(q.vertices)
-#     if m == 0 or m % 2 != 0:
-#         return None
-#     n = m // 2
-#     if q.vertices != list(range(1, m + 1)):
-#         return None
-#     if q.frozen != set(range(n + 1, m + 1)):
-#         return None
-#     return n
-
 class VColor(Enum):
     DEFAULT = auto()
     YELLOW = auto()

@@ -18,6 +18,7 @@ from .io import (
 from .vertex_color import is_green_framed, is_red_framed, VColor, vertex_color
 from .operations import (
     coframe_quiver,
+    frame_quiver_old,
     frame_quiver,
     mutate_ice_quiver,
     random_quiver,
@@ -30,6 +31,7 @@ __all__ = [
     "coframe_quiver",
     "format_edgelist",
     "format_exchange_matrix",
+    "frame_quiver_old",
     "frame_quiver",
     "framed_layout_n",
     "ice_quiver_from_exmat",

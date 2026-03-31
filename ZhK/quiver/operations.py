@@ -58,7 +58,7 @@ def random_quiver(
 
     return counts
 
-def frame_quiver(n: int, base_counts: ArrowCounts) -> IceQuiver:
+def frame_quiver_old(n: int, base_counts: ArrowCounts) -> IceQuiver:
     vertices = list(range(1, 2*n + 1))
     frozen = set(range(n + 1, 2*n + 1))
 
@@ -67,6 +67,21 @@ def frame_quiver(n: int, base_counts: ArrowCounts) -> IceQuiver:
         counts[(i, n + i)] = counts.get((i, n + i), 0) + 1
 
     return IceQuiver(vertices=vertices, frozen=frozen, arrow_counts=counts)
+
+def frame_quiver(q: IceQuiver) -> IceQuiver:
+    m = q.m_total()
+    new_vertices = list(range(1, 2*m + 1))
+    new_frozen = set(range(m + 1, 2*m + 1))
+    new_counts = dict(q.arrow_counts)
+
+    for i in q.vertices:
+        new_counts[(i, m + i)] = new_counts.get((i, m + i), 0) + 1
+    
+    return IceQuiver(
+            vertices=new_vertices,
+            frozen=new_frozen,
+            arrow_counts=new_counts,
+        )
 
 def coframe_quiver(n: int, base_counts: ArrowCounts) -> IceQuiver:
     vertices = list(range(1, 2*n + 1))

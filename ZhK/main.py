@@ -4,6 +4,7 @@ import random
 from typing import List
 
 from quiver import (
+        IceQuiver,
         random_quiver,
         frame_quiver,
         mutate_ice_quiver,
@@ -74,7 +75,8 @@ def main() -> int:
             allow_multi_arrows=args.allow_multi_arrows,
             max_parallel=args.max_parallel,
         )
-        q = frame_quiver(args.n, base)
+        # q = frame_quiver_old(args.n, base)
+        q = frame_quiver(IceQuiver(vertices=list(range(1,args.n)), frozen=[], arrow_counts=base))
 
     for k in _parse_mutation_sequence(args.mutate):
         q = mutate_ice_quiver(q, k)

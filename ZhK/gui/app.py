@@ -26,7 +26,7 @@ class QuiverMutationApp:
     def _build_layout(self) -> None:
         # toolbar
         # ttk.Label(self.toolbar.frame, text="Toolbar (stub)").pack(side=tk.LEFT)
-        self.toolbar = Toolbar(self.root, self._on_mode_change)
+        self.toolbar = Toolbar(self.root, self._on_mode_change, self._add_framing)
 
         # TODO: add_vertex, add_arrow, delete_vertex, freeze, mutation mode,
         #       random quiver, random mutation, add framing, undo
@@ -106,7 +106,28 @@ class QuiverMutationApp:
             if vid is not None:
                 self._mutate_vertex(vid)
                 print(f"Mutated vertex {vid}")
-    
+        
+        elif mode == Mode.ADD_FRAMING:
+            self._add_framing()
+            print("Added framing")
+
+
+    def _redraw_all(self) -> None:
+        # Clear canvas
+        self.canvas_view.clear_all()
+
+        # redraw vertex
+        for vid, (x, y) in self.state.data.positions.items():
+            self.canvas_view.draw_vertex(vid, x, y)
+
+        # redraw arrows
+        arrows = self.state.data.get_arrow_draw_data()
+        self.canvas_view.redraw_arrows(arrows)
+
+        # redraw color
+        self._refresh_colors()
+
+
     def _on_drag_start(self, x: int, y: int) -> None:
         # Disable dragging in arrow mode.
         if self.state.mode in (Mode.ADD_ARROW_SRC, Mode.ADD_ARROW_DST):
@@ -199,25 +220,14 @@ class QuiverMutationApp:
         self.state.data.remove_vertex(vid)
 
         # Redrawing
-        self.canvas_view.clear_all()
-
-        for v, (x, y) in self.state.data.positions.items():
-            self.canvas_view.draw_vertex(v, x, y)
-
-        arrows = self.state.data.get_arrow_draw_data()
-        self.canvas_view.redraw_arrows(arrows)
-        self._refresh_colors()
+        self._redraw_all()
 
 
     def _freeze_vertex(self, vid: int) -> None:
         self.state.arrow_start = None
         self.state.data.freeze_vertex(vid)
 
-        # self.canvas_view.set_vertex_frozen(vid, True)
-
-        arrows = self.state.data.get_arrow_draw_data()
-        self.canvas_view.redraw_arrows(arrows)
-        self._refresh_colors()
+        self._redraw_all()
     
     def _refresh_colors(self) -> None:
         self.canvas_view.recolor_all_vertices(
@@ -231,13 +241,18 @@ class QuiverMutationApp:
 
         self.state.data.mutate_vertex(vid)
 
-        arrows = self.state.data.get_arrow_draw_data()
-        self.canvas_view.redraw_arrows(arrows)
-        self._refresh_colors()
+        self._redraw_all()
 
 
     def run(self) -> None:
         self.root.mainloop()
+    
+    def _add_framing(self) -> None:
+        self._clear_selection()
+        self.state.arrow_start = None
+        self.state.data.add_framing()
+
+        self._redraw_all()
 
 
 def main() -> int:
