@@ -1,6 +1,6 @@
 """Unit tests for harness.py."""
 
-from .harness import (
+from ning.agent.harness import (
     SYSTEM_PROMPT,
     render_state,
     render_diff,

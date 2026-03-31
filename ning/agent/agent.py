@@ -2,6 +2,9 @@
 
 from dataclasses import dataclass, field
 
+import numpy as np
+from numpy.typing import NDArray
+
 from .engine import QuiverEngine
 from .harness import (
     SYSTEM_PROMPT,
@@ -31,7 +34,7 @@ def run_game(
     max_steps: int = 50,
     max_retries: int = 3,
 ) -> GameResult:
-    """Run one complete game.
+    """Run one complete game from an edge list.
 
     Args:
         n: Number of mutable vertices.
@@ -44,7 +47,41 @@ def run_game(
         GameResult with outcome, history, and full message log.
     """
     engine = QuiverEngine()
-    state = engine.reset(n, edges)
+    engine.reset(n, edges)
+    return _run_game_loop(engine, provider, max_steps, max_retries)
+
+
+def run_game_from_matrix(
+    B_A: NDArray[np.int64],
+    provider: LLMProvider,
+    max_steps: int = 50,
+    max_retries: int = 3,
+) -> GameResult:
+    """Run one complete game from an exchange matrix.
+
+    Args:
+        B_A: n×n antisymmetric exchange matrix.
+        provider: LLM provider to use.
+        max_steps: Maximum mutation steps before giving up.
+        max_retries: Max consecutive parse failures per turn.
+
+    Returns:
+        GameResult with outcome, history, and full message log.
+    """
+    engine = QuiverEngine()
+    engine.reset_from_matrix(B_A)
+    return _run_game_loop(engine, provider, max_steps, max_retries)
+
+
+def _run_game_loop(
+    engine: QuiverEngine,
+    provider: LLMProvider,
+    max_steps: int,
+    max_retries: int,
+) -> GameResult:
+    """Internal: run the LLM game loop on an already-initialized engine."""
+    state = engine.get_state()
+    n = engine.n
 
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     user_msg = build_user_message(state)

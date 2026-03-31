@@ -1,4 +1,4 @@
-"""Unit tests for mutation.py and engine.py.
+"""Unit tests for mutation.py, engine.py, and catalog.py.
 
 Test cases are drawn from ning/graph_rule.md and ning/graph_matrix_rule.md.
 """
@@ -6,7 +6,7 @@ Test cases are drawn from ning/graph_rule.md and ning/graph_matrix_rule.md.
 import numpy as np
 import pytest
 
-from .mutation import (
+from ning.agent.mutation import (
     make_exchange_matrix,
     make_framed,
     make_coframed,
@@ -15,7 +15,8 @@ from .mutation import (
     is_all_red,
     matrix_to_edges,
 )
-from .engine import QuiverEngine
+from ning.agent.engine import QuiverEngine
+from ning.agent import catalog
 
 
 # ── mutation.py tests ──────────────────────────────────────────────
@@ -162,6 +163,19 @@ class TestEdgeExtraction:
         assert (3, 6, 1) in edges
         assert len(edges) == 5
 
+    def test_coframed_edges(self):
+        """Coframed has frozen→mutable edges (negative B_f entries)."""
+        B = make_coframed(make_exchange_matrix(3, [(1, 2), (2, 3)]))
+        edges = matrix_to_edges(B)
+        # Frozen→mutable: 4→1, 5→2, 6→3
+        assert (4, 1, 1) in edges
+        assert (5, 2, 1) in edges
+        assert (6, 3, 1) in edges
+        # Mutable: 1→2, 2→3
+        assert (1, 2, 1) in edges
+        assert (2, 3, 1) in edges
+        assert len(edges) == 5
+
 
 # ── engine.py tests ────────────────────────────────────────────────
 
@@ -234,3 +248,104 @@ class TestEngine:
         state = engine.get_state()
         assert state["move_history"] == [2, 1]
         assert state["step"] == 2
+
+    def test_reset_from_matrix(self):
+        """reset_from_matrix produces same result as reset with edges."""
+        engine1 = QuiverEngine()
+        engine1.reset(3, [(1, 2), (2, 3)])
+
+        engine2 = QuiverEngine()
+        B_A = make_exchange_matrix(3, [(1, 2), (2, 3)])
+        engine2.reset_from_matrix(B_A)
+
+        np.testing.assert_array_equal(
+            engine1.get_state()["matrix"],
+            engine2.get_state()["matrix"],
+        )
+
+    def test_get_state_at(self):
+        """Browse history: get_state_at returns correct state for each step."""
+        engine = QuiverEngine()
+        engine.reset(3, [(1, 2), (2, 3)])
+
+        # Capture states as we go
+        state0 = engine.get_state()
+        engine.mutate(2)
+        state1 = engine.get_state()
+        engine.mutate(1)
+        state2 = engine.get_state()
+
+        # Browse back
+        np.testing.assert_array_equal(engine.get_state_at(0)["matrix"], state0["matrix"])
+        np.testing.assert_array_equal(engine.get_state_at(1)["matrix"], state1["matrix"])
+        np.testing.assert_array_equal(engine.get_state_at(2)["matrix"], state2["matrix"])
+
+        # Step metadata
+        assert engine.get_state_at(0)["step"] == 0
+        assert engine.get_state_at(0)["move_history"] == []
+        assert engine.get_state_at(1)["step"] == 1
+        assert engine.get_state_at(1)["move_history"] == [2]
+        assert engine.get_state_at(1)["last_move"] == 2
+        assert engine.get_state_at(2)["last_move"] == 1
+
+        # Out of range
+        with pytest.raises(ValueError):
+            engine.get_state_at(3)
+        with pytest.raises(ValueError):
+            engine.get_state_at(-1)
+
+
+# ── catalog.py tests ──────────────────────────────────────────────
+
+
+class TestCatalog:
+    def test_list_graphs(self):
+        graphs = catalog.list_graphs()
+        assert len(graphs) >= 11  # 4 presets + 7 test1
+        names = [g["name"] for g in graphs]
+        assert "linear_2" in names
+        assert "test1_03_n6" in names
+
+    def test_list_sorted_by_n(self):
+        graphs = catalog.list_graphs()
+        ns = [g["n"] for g in graphs]
+        assert ns == sorted(ns)
+
+    def test_get_graph(self):
+        g = catalog.get_graph("linear_3")
+        assert g["n"] == 3
+        assert g["B_A"].shape == (3, 3)
+        # Antisymmetric
+        np.testing.assert_array_equal(g["B_A"], -g["B_A"].T)
+
+    def test_get_graph_test1(self):
+        g = catalog.get_graph("test1_07_n4")
+        assert g["n"] == 4
+        assert g["B_A"].shape == (4, 4)
+
+    def test_get_solution(self):
+        sol = catalog.get_solution("test1_03_n6")
+        assert sol is not None
+        assert isinstance(sol, list)
+        assert len(sol) == 10
+
+    def test_no_solution_for_preset(self):
+        sol = catalog.get_solution("linear_2")
+        assert sol is None
+
+    def test_get_graph_not_found(self):
+        with pytest.raises(FileNotFoundError):
+            catalog.get_graph("nonexistent")
+
+    def test_solutions_reach_all_red(self):
+        """Verify all games with solutions actually reach all-red."""
+        for info in catalog.list_graphs():
+            sol = catalog.get_solution(info["name"])
+            if sol is None:
+                continue
+            g = catalog.get_graph(info["name"])
+            engine = QuiverEngine()
+            engine.reset_from_matrix(g["B_A"])
+            for k in sol:
+                engine.mutate(k)
+            assert engine.is_won(), f"{info['name']} solution does not reach all-red"

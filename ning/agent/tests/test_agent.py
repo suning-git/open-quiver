@@ -1,7 +1,8 @@
 """Tests for the agent game loop using MockProvider."""
 
-from .agent import run_game
-from .llm_provider import MockProvider
+from ning.agent.agent import run_game, run_game_from_matrix
+from ning.agent.mutation import make_exchange_matrix
+from ning.agent.llm_provider import MockProvider
 
 
 class TestRunGameWin:
@@ -85,3 +86,27 @@ class TestRunGameMessages:
         provider = MockProvider.from_actions([1, 2])
         run_game(2, [(1, 2)], provider)
         assert provider.call_count == 2
+
+
+class TestRunGameFromMatrix:
+    def test_same_result_as_edges(self):
+        """run_game_from_matrix gives same outcome as run_game."""
+        provider1 = MockProvider.from_actions([1, 2])
+        result1 = run_game(2, [(1, 2)], provider1)
+
+        B_A = make_exchange_matrix(2, [(1, 2)])
+        provider2 = MockProvider.from_actions([1, 2])
+        result2 = run_game_from_matrix(B_A, provider2)
+
+        assert result1.won == result2.won
+        assert result1.move_history == result2.move_history
+
+    def test_catalog_graph(self):
+        """run_game_from_matrix works with a catalog graph."""
+        from ning.agent import catalog
+
+        g = catalog.get_graph("test1_06_n3")
+        sol = catalog.get_solution("test1_06_n3")
+        provider = MockProvider.from_actions(sol)
+        result = run_game_from_matrix(g["B_A"], provider)
+        assert result.won

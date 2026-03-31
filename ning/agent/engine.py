@@ -28,8 +28,18 @@ class QuiverEngine:
         self._visited: set[bytes] = set()
         self._move_history: list[int] = []
 
+    @property
+    def n(self) -> int:
+        """Number of mutable vertices."""
+        return self._n
+
+    @property
+    def total_steps(self) -> int:
+        """Number of mutations performed so far."""
+        return len(self._move_history)
+
     def reset(self, n: int, edges: list[tuple[int, int]]) -> dict:
-        """Initialize a new game from a graph A.
+        """Initialize a new game from an edge list.
 
         Args:
             n: Number of mutable vertices.
@@ -38,8 +48,19 @@ class QuiverEngine:
         Returns:
             Initial state dict.
         """
-        self._n = n
-        self._B_A = make_exchange_matrix(n, edges)
+        return self.reset_from_matrix(make_exchange_matrix(n, edges))
+
+    def reset_from_matrix(self, B_A: Matrix) -> dict:
+        """Initialize a new game from an exchange matrix B_A.
+
+        Args:
+            B_A: n×n antisymmetric exchange matrix.
+
+        Returns:
+            Initial state dict.
+        """
+        self._n = B_A.shape[0]
+        self._B_A = B_A.copy()
         self._B = make_framed(self._B_A)
         self._history = [self._B.copy()]
         self._visited = {self._B.tobytes()}
@@ -118,6 +139,39 @@ class QuiverEngine:
             "step": len(self._move_history),
             "move_history": list(self._move_history),
         }
+
+    def get_state_at(self, step: int) -> dict:
+        """Return the game state at a given step in history.
+
+        Args:
+            step: Step index (0 = initial state, len(move_history) = current).
+
+        Returns:
+            State dict with matrix, edges, colors, and the move that led here.
+        """
+        if self._B is None:
+            raise RuntimeError("Engine not initialized. Call reset() first.")
+        if not (0 <= step <= len(self._move_history)):
+            raise ValueError(
+                f"Step {step} out of range (0..{len(self._move_history)})."
+            )
+
+        B = self._history[step]
+        colors = get_colors(B)
+        red_count = sum(1 for c in colors.values() if c == "red")
+
+        state = {
+            "matrix": B.copy(),
+            "edges": matrix_to_edges(B),
+            "colors": colors,
+            "red_count": red_count,
+            "total_mutable": self._n,
+            "step": step,
+            "move_history": list(self._move_history[:step]),
+        }
+        if step > 0:
+            state["last_move"] = self._move_history[step - 1]
+        return state
 
     def is_won(self) -> bool:
         """Check if the game is won (all vertices red)."""

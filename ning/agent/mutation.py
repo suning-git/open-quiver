@@ -112,12 +112,21 @@ def is_all_red(B: Matrix) -> bool:
 def matrix_to_edges(B: Matrix) -> list[tuple[int, int, int]]:
     """Extract edge list from exchange matrix.
 
+    For the mutable block (columns 0..n-1), positive B[i,j] means i→j.
+    For the frozen block (columns n..2n-1), negative B[i,j] means j→i
+    (frozen vertex pointing to mutable vertex), which has no other row
+    to record it.
+
     Returns:
-        List of (src, dst, count) triples (1-indexed), only for positive entries.
+        List of (src, dst, count) triples (1-indexed).
     """
+    n = B.shape[0]
     edges = []
-    for i in range(B.shape[0]):
+    for i in range(n):
         for j in range(B.shape[1]):
             if B[i, j] > 0:
                 edges.append((i + 1, j + 1, int(B[i, j])))
+            elif B[i, j] < 0 and j >= n:
+                # Frozen→mutable edge: column j has no row, so extract from negative entry
+                edges.append((j + 1, i + 1, int(-B[i, j])))
     return edges
