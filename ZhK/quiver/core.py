@@ -65,7 +65,7 @@ class IceQuiver:
         if a == b:
             return self
 
-        new_counts = self.arrow_counts
+        new_counts = dict(self.arrow_counts)
 
         if (b, a) in new_counts:
             cancel = min(count, new_counts[(b, a)])
@@ -90,7 +90,7 @@ class IceQuiver:
         Decrease multiplicity of arrow a -> b.
         Remove entry if count becomes zero or negative.
         """
-        new_counts = self.arrow_counts
+        new_counts = dict(self.arrow_counts)
 
         if (a, b) in new_counts:
             new_counts[(a, b)] -= count

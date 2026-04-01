@@ -7,7 +7,7 @@ from __future__ import annotations
 from typing import Dict, Tuple, Optional
 from enum import Enum, auto
 
-from quiver import IceQuiver, mutate_ice_quiver
+from quiver import IceQuiver, mutate_ice_quiver, frame_quiver
 from gui.constants import VERTEX_RADIUS
 
 class Mode(Enum):
@@ -105,6 +105,18 @@ class IceQuiverWithPosition:
         if vid in self.quiver.frozen:
             return
         self.quiver = mutate_ice_quiver(self.quiver, vid)
+
+    def add_framing(self) -> None:
+        old_quiver = self.quiver
+        m = old_quiver.m_total()
+
+        self.quiver = frame_quiver(old_quiver)
+
+        for i in range(1, m + 1):
+            x, y = self.positions[i]
+            new_vid = m + i
+            # uniformly shift newly created frozen vertices
+            self.positions[new_vid] = (x + 80, y + 60)
 
 
 class GuiState:

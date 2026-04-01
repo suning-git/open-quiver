@@ -1,5 +1,5 @@
 # Python
-__pycache__/
+*__pycache__*
 *.py[cod]
 *$py.class
 *.so
@@ -21,6 +21,9 @@ env/
 .idea/
 *.swp
 *.swo
+
+# Claude Code
+.claude/
 
 # Jupyter
 .ipynb_checkpoints/
