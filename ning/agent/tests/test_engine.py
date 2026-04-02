@@ -295,6 +295,17 @@ class TestEngine:
             engine.get_state_at(-1)
 
 
+class TestHistoryBounds:
+    def test_web_history_clamp_style_behavior(self):
+        """UI-level history indices should be clamped before engine lookup."""
+        from ning.agent.play_web import clamp_view_step
+
+        assert clamp_view_step(-1, 0) == 0
+        assert clamp_view_step(-3, 5) == 0
+        assert clamp_view_step(2, 5) == 2
+        assert clamp_view_step(8, 5) == 5
+
+
 # ── catalog.py tests ──────────────────────────────────────────────
 
 

@@ -6,13 +6,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from .engine import QuiverEngine
-from .harness import (
-    SYSTEM_PROMPT,
-    build_user_message,
-    format_error,
-    parse_action,
-    render_diff,
-)
+from .game_turn_runner import initialize_messages, run_turn
 from .llm_provider import LLMProvider
 
 
@@ -81,29 +75,12 @@ def _run_game_loop(
 ) -> GameResult:
     """Internal: run the LLM game loop on an already-initialized engine."""
     state = engine.get_state()
-    n = engine.n
-
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-    user_msg = build_user_message(state)
-    messages.append({"role": "user", "content": user_msg})
+    messages = initialize_messages(engine)
 
     while not engine.is_won() and state["step"] < max_steps:
-        # Get LLM response
-        response = provider.chat(messages)
-        messages.append({"role": "assistant", "content": response})
+        turn = run_turn(engine, messages, provider, max_retries=max_retries)
 
-        # Parse action with retries
-        k = parse_action(response, n)
-        retries = 0
-        while k is None and retries < max_retries:
-            error_msg = format_error(response, n)
-            messages.append({"role": "user", "content": error_msg})
-            response = provider.chat(messages)
-            messages.append({"role": "assistant", "content": response})
-            k = parse_action(response, n)
-            retries += 1
-
-        if k is None:
+        if turn.reason == "parse_failure":
             s = engine.get_state()
             return GameResult(
                 won=False,
@@ -112,19 +89,9 @@ def _run_game_loop(
                 messages=messages,
                 reason="parse_failure",
             )
-
-        # Execute mutation
-        state = engine.mutate(k)
-        diff_text = render_diff(state)
-
-        if engine.is_won():
-            # Record final feedback for completeness
-            messages.append({"role": "user", "content": diff_text})
+        if turn.reason == "won":
             break
-
-        # Build next turn message
-        user_msg = build_user_message(state, diff_text=diff_text)
-        messages.append({"role": "user", "content": user_msg})
+        state = engine.get_state()
 
     state = engine.get_state()
 

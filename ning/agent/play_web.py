@@ -14,14 +14,12 @@ import streamlit.components.v1 as components
 
 from ning.agent.engine import QuiverEngine
 from ning.agent.catalog import list_graphs, get_graph
-from ning.agent.harness import (
-    SYSTEM_PROMPT,
-    build_user_message,
-    format_error,
-    parse_action,
-    render_diff,
+from ning.agent.game_turn_runner import initialize_messages, run_turn
+from ning.agent.provider_registry import (
+    create_provider,
+    get_provider_config,
+    list_provider_names,
 )
-from ning.agent.llm_provider import OpenAICompatProvider
 from ning.agent.graph_viz import render_graph
 
 # ── Page config ───────────────────────────────────────────────────
@@ -30,31 +28,6 @@ st.set_page_config(
     page_title="Green-Red Mutation Game",
     layout="wide",
 )
-
-# ── Provider config ───────────────────────────────────────────────
-
-PROVIDERS = {
-    "deepseek": {
-        "model": "deepseek-chat",
-        "base_url": "https://api.deepseek.com",
-        "api_key_env": "DEEPSEEK_API_KEY",
-    },
-    "gpt-5.4-mini": {
-        "model": "gpt-5.4-mini",
-        "base_url": "https://api.openai.com/v1",
-        "api_key_env": "OPENAI_API_KEY",
-    },
-    "gpt-5.4": {
-        "model": "gpt-5.4",
-        "base_url": "https://api.openai.com/v1",
-        "api_key_env": "OPENAI_API_KEY",
-    },
-    "gpt-5.4-nano": {
-        "model": "gpt-5.4-nano",
-        "base_url": "https://api.openai.com/v1",
-        "api_key_env": "OPENAI_API_KEY",
-    },
-}
 
 # ── Graph catalog ────────────────────────────────────────────────
 
@@ -77,16 +50,18 @@ def init_session():
 init_session()
 
 
+def clamp_view_step(view_step: int, total_steps: int) -> int:
+    """Keep history browsing within the valid inclusive range."""
+    return max(0, min(view_step, total_steps))
+
+
 def start_game(graph_label: str, provider_name: str):
     """Initialize a new game."""
     graph_name = GRAPH_OPTIONS[graph_label]
     graph_data = get_graph(graph_name)
     engine = QuiverEngine()
-    state = engine.reset_from_matrix(graph_data["B_A"])
-
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-    user_msg = build_user_message(state)
-    messages.append({"role": "user", "content": user_msg})
+    engine.reset_from_matrix(graph_data["B_A"])
+    messages = initialize_messages(engine)
 
     st.session_state.engine = engine
     st.session_state.messages = messages
@@ -97,66 +72,39 @@ def start_game(graph_label: str, provider_name: str):
     st.session_state.provider_name = provider_name
 
 
-def get_provider() -> OpenAICompatProvider | None:
+def get_provider():
     """Create provider from current selection."""
     name = st.session_state.get("provider_name", "deepseek")
-    cfg = PROVIDERS[name]
-    api_key = os.getenv(cfg["api_key_env"], "")
-    if not api_key:
+    try:
+        return create_provider(name)
+    except RuntimeError:
+        cfg = get_provider_config(name)
         st.error(f"Set {cfg['api_key_env']} in .env file.")
         return None
-    return OpenAICompatProvider(
-        model=cfg["model"],
-        base_url=cfg["base_url"],
-        api_key=api_key,
-    )
+    except ValueError as e:
+        st.error(str(e))
+        return None
 
 
 def step_game():
     """Execute one step: LLM decides, engine mutates."""
     engine = st.session_state.engine
     messages = st.session_state.messages
-    n = engine.n
 
     provider = get_provider()
     if provider is None:
         return
 
-    # Get LLM response
-    response = provider.chat(messages)
-    messages.append({"role": "assistant", "content": response})
-
-    # Parse with retries
-    k = parse_action(response, n)
-    retries = 0
-    max_retries = 3
-    while k is None and retries < max_retries:
-        error_msg = format_error(response, n)
-        messages.append({"role": "user", "content": error_msg})
-        response = provider.chat(messages)
-        messages.append({"role": "assistant", "content": response})
-        k = parse_action(response, n)
-        retries += 1
-
-    if k is None:
-        st.session_state.game_over = True
-        return
-
-    # Execute mutation
+    # Keep the user's history cursor at the frontier when stepping.
     was_at_frontier = st.session_state.view_step == engine.total_steps
-    state = engine.mutate(k)
-    diff_text = render_diff(state)
+    turn = run_turn(engine, messages, provider, max_retries=3)
 
     # Auto-advance view if user was watching the latest step
-    if was_at_frontier:
+    if was_at_frontier and turn.reason != "parse_failure":
         st.session_state.view_step = engine.total_steps
 
-    if engine.is_won():
-        messages.append({"role": "user", "content": diff_text})
+    if turn.game_over:
         st.session_state.game_over = True
-    else:
-        user_msg = build_user_message(state, diff_text=diff_text)
-        messages.append({"role": "user", "content": user_msg})
 
 
 # ── Sidebar: Controls ─────────────────────────────────────────────
@@ -164,7 +112,7 @@ def step_game():
 with st.sidebar:
     st.header("Game Controls")
 
-    provider_name = st.selectbox("LLM Provider", list(PROVIDERS.keys()))
+    provider_name = st.selectbox("LLM Provider", list_provider_names())
     graph_label = st.selectbox("Graph", list(GRAPH_OPTIONS.keys()))
 
     if st.button("Start New Game", use_container_width=True):
@@ -211,11 +159,10 @@ if not st.session_state.game_started:
 else:
     engine = st.session_state.engine
     total_steps = engine.total_steps
-    view_step = st.session_state.view_step
+    view_step = clamp_view_step(st.session_state.view_step, total_steps)
 
-    # Clamp view_step in case of reset
-    if view_step > total_steps:
-        view_step = total_steps
+    # Clamp view_step in case session state drifts out of range.
+    if view_step != st.session_state.view_step:
         st.session_state.view_step = view_step
 
     view_state = engine.get_state_at(view_step)

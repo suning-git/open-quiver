@@ -82,7 +82,8 @@ ning/agent/
 │
 ├── harness.py       engine 状态 <-> LLM 文本
 ├── llm_provider.py  LLM 接口抽象（OpenAI 兼容）
-├── agent.py         无头游戏循环 run_game()
+├── game_turn_runner.py    回合级执行器（单步 run_turn）
+├── game_session_runner.py 无头游戏循环 run_game()
 │
 ├── play_web.py      Streamlit 网页入口
 ├── play_cli.py      命令行入口

@@ -10,12 +10,12 @@ You are playing the green-red mutation game on a directed multigraph (quiver).
 
 ## Rules
 - The graph has mutable vertices (1..n) and frozen vertices (1'..n').
-- Each mutable vertex is either GREEN or RED.
 - On each turn you choose one mutable vertex k to mutate (μ_k).
 - Mutation μ_k does three things:
   1. For every 2-path i→k→j, add an edge i→j (multiplicity multiplies).
   2. Reverse all edges touching k.
   3. Cancel opposite edge pairs.
+- Each mutable vertex is either GREEN or RED. A mutable vertex k is green (resp., red) if there is no arrow of the form i→k (resp., k→i) where i is frozen. In particular, in the initial state, all mutable vertices are green.
 - Your goal: make ALL mutable vertices RED.
 
 ## Output format
@@ -47,11 +47,9 @@ def render_state(state: dict) -> str:
         color_parts.append(f"{v}({tag})")
     lines.append("Vertices: " + " ".join(color_parts))
 
-    # Edges among mutable vertices only
-    mutable_edges = [(s, d, c) for s, d, c in edges if s <= n and d <= n]
-    if mutable_edges:
+    if edges:
         edge_strs = []
-        for s, d, c in mutable_edges:
+        for s, d, c in edges:
             if c == 1:
                 edge_strs.append(f"{s}→{d}")
             else:

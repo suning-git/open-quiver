@@ -31,10 +31,10 @@ class TestRenderState:
         assert "3(G)" in text
         assert "1→2" in text
         assert "2→3" in text
-        # Frozen edges should be excluded
-        assert "4" not in text
-        assert "5" not in text
-        assert "6" not in text
+        # Frozen edges are included in the state rendering
+        assert "1→4" in text
+        assert "2→5" in text
+        assert "3→6" in text
 
     def test_partial_red(self):
         state = {
@@ -72,7 +72,8 @@ class TestRenderState:
             "move_history": [],
         }
         text = render_state(state)
-        assert "(none)" in text
+        assert "1→3" in text
+        assert "2→4" in text
 
 
 # ── render_diff ───────────────────────────────────────────────────

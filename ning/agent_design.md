@@ -122,7 +122,7 @@ Agent 层内部进一步分离出 LLM 适配层，以支持多模型切换：
 
 采用**混合呈现**策略：
 
-- 主体：内点间的边列表（如 `1→2, 2→3`），冻结边不展示
+- 主体：当前图的边列表，既包括内点间的边，也包括内点与冻结点相关的边（如 `1→2, 2→3, 1→4, 5→2`）
 - 附加：每个内点的绿/红标记（如 `1(G) 2(R) 3(G)`）、红色占比
 
 ### 5.2 Feedback 设计
@@ -178,7 +178,7 @@ Agent Response:
 
 ### 6.1 决策循环
 
-实现在 `agent.py`。核心是 `_run_game_loop`：
+实现在 `game_session_runner.py`。核心是 `_run_game_loop`：
 
 ```python
 while not engine.is_won() and state["step"] < max_steps:
