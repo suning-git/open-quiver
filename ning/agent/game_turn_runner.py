@@ -4,12 +4,12 @@ from dataclasses import dataclass
 
 from .engine import QuiverEngine
 from .harness import (
-    SYSTEM_PROMPT,
     build_user_message,
     format_error,
-    parse_action,
+    parse_action_or_undo,
     render_diff,
 )
+from .initial_prompts import get_system_prompt
 from .llm_provider import LLMProvider
 
 
@@ -26,7 +26,7 @@ def initialize_messages(engine: QuiverEngine) -> list[dict]:
     """Build initial conversation messages from current engine state."""
     state = engine.get_state()
     return [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": get_system_prompt()},
         {"role": "user", "content": build_user_message(state)},
     ]
 
@@ -41,25 +41,45 @@ def run_turn(
 
     Mutates `messages` in place by appending assistant/user messages.
     """
+    # Guard: do not ask the model for another move after game is already won.
+    if engine.is_won():
+        return TurnResult(game_over=True, reason="won")
+
     n = engine.n
 
     response = provider.chat(messages)
     messages.append({"role": "assistant", "content": response})
 
-    k = parse_action(response, n)
+    command = parse_action_or_undo(response, n)
     retries = 0
-    while k is None and retries < max_retries:
-        error_msg = format_error(response, n)
+    state = None
+
+    while state is None:
+        if isinstance(command, int):
+            state = engine.mutate(command)
+            break
+
+        if command == "undo":
+            try:
+                state = engine.undo()
+                break
+            except ValueError:
+                error_msg = (
+                    "Cannot undo: no previous move exists. "
+                    f"Reply with an integer between 1 and {n}, or 'undo'."
+                )
+        else:
+            error_msg = format_error(response, n, allow_undo=True)
+
+        if retries >= max_retries:
+            return TurnResult(game_over=True, reason="parse_failure")
+
         messages.append({"role": "user", "content": error_msg})
         response = provider.chat(messages)
         messages.append({"role": "assistant", "content": response})
-        k = parse_action(response, n)
+        command = parse_action_or_undo(response, n)
         retries += 1
 
-    if k is None:
-        return TurnResult(game_over=True, reason="parse_failure")
-
-    state = engine.mutate(k)
     diff_text = render_diff(state)
 
     if engine.is_won():
@@ -69,4 +89,3 @@ def run_turn(
     user_msg = build_user_message(state, diff_text=diff_text)
     messages.append({"role": "user", "content": user_msg})
     return TurnResult(game_over=False, reason="", diff_text=diff_text)
-

@@ -27,6 +27,7 @@ class QuiverEngine:
         self._history: list[Matrix] = []
         self._visited: set[bytes] = set()
         self._move_history: list[int] = []
+        self._action_history: list[dict] = []
 
     @property
     def n(self) -> int:
@@ -65,6 +66,7 @@ class QuiverEngine:
         self._history = [self._B.copy()]
         self._visited = {self._B.tobytes()}
         self._move_history = []
+        self._action_history = []
         return self.get_state()
 
     def mutate(self, k: int) -> dict:
@@ -86,6 +88,7 @@ class QuiverEngine:
 
         self._B = mutate(old_B, k)
         self._move_history.append(k)
+        self._action_history.append({"type": "mutate", "vertex": k})
 
         # Cycle detection
         key = self._B.tobytes()
@@ -112,6 +115,7 @@ class QuiverEngine:
 
         state = self.get_state()
         state["diff"] = {
+            "action_type": "mutate",
             "mutated_vertex": k,
             "color_changes": color_changes,
             "red_count_before": old_red,
@@ -120,6 +124,45 @@ class QuiverEngine:
         if cycle_step is not None:
             state["diff"]["cycle_warning"] = cycle_step
 
+        return state
+
+    def undo(self) -> dict:
+        """Undo the most recent mutation and return the reverted state + diff.
+
+        Returns:
+            Dict with reverted state and diff information.
+        """
+        if self._B is None:
+            raise RuntimeError("Engine not initialized. Call reset() first.")
+        if not self._move_history:
+            raise ValueError("Cannot undo: already at initial state (no moves to undo).")
+
+        old_B = self._B
+        old_colors = get_colors(old_B)
+
+        undone_vertex = self._move_history.pop()
+        self._action_history.append({"type": "undo", "vertex": undone_vertex})
+        self._history.pop()  # drop current state
+        self._B = self._history[-1].copy()
+        self._visited = {B.tobytes() for B in self._history}
+
+        new_colors = get_colors(self._B)
+        color_changes = {}
+        for v in range(1, self._n + 1):
+            if old_colors[v] != new_colors[v]:
+                color_changes[v] = (old_colors[v], new_colors[v])
+
+        old_red = sum(1 for c in old_colors.values() if c == "red")
+        new_red = sum(1 for c in new_colors.values() if c == "red")
+
+        state = self.get_state()
+        state["diff"] = {
+            "action_type": "undo",
+            "undone_vertex": undone_vertex,
+            "color_changes": color_changes,
+            "red_count_before": old_red,
+            "red_count_after": new_red,
+        }
         return state
 
     def get_state(self) -> dict:
@@ -138,6 +181,7 @@ class QuiverEngine:
             "total_mutable": self._n,
             "step": len(self._move_history),
             "move_history": list(self._move_history),
+            "action_history": list(self._action_history),
         }
 
     def get_state_at(self, step: int) -> dict:
@@ -168,6 +212,7 @@ class QuiverEngine:
             "total_mutable": self._n,
             "step": step,
             "move_history": list(self._move_history[:step]),
+            "action_history": list(self._action_history),
         }
         if step > 0:
             state["last_move"] = self._move_history[step - 1]

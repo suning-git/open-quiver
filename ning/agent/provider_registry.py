@@ -5,8 +5,13 @@ import os
 from .llm_provider import OpenAICompatProvider
 
 PROVIDERS = {
-    "deepseek": {
+    "deepseek-chat": {
         "model": "deepseek-chat",
+        "base_url": "https://api.deepseek.com",
+        "api_key_env": "DEEPSEEK_API_KEY",
+    },
+    "deepseek-reasoner": {
+        "model": "deepseek-reasoner",
         "base_url": "https://api.deepseek.com",
         "api_key_env": "DEEPSEEK_API_KEY",
     },

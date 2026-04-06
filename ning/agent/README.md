@@ -28,6 +28,7 @@ streamlit run ning/agent/play_web.py
 - 左侧选择 LLM 模型和图
 - **Step**：单步执行，LLM 选一个顶点做 mutation
 - **Auto-play**：连续执行直到游戏结束
+- 支持模型输出 `undo` 来撤销最近一步
 - 图形面板支持浏览历史步骤（前进/后退/slider）
 
 ### 命令行版
@@ -80,6 +81,7 @@ ning/agent/
 ├── catalog.py       图数据加载（扫描 games/*.json）
 ├── games/           图定义（JSON）
 │
+├── initial_prompts.py Prompt 版本管理
 ├── harness.py       engine 状态 <-> LLM 文本
 ├── llm_provider.py  LLM 接口抽象（OpenAI 兼容）
 ├── game_turn_runner.py    回合级执行器（单步 run_turn）

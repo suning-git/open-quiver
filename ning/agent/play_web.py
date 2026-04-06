@@ -1,7 +1,10 @@
 """Streamlit app for the green-red mutation game."""
 
+import json
 import os
 import sys
+from datetime import datetime
+from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
@@ -33,6 +36,7 @@ st.set_page_config(
 
 GRAPH_LIST = list_graphs()  # [{"name": ..., "n": ...}, ...]
 GRAPH_OPTIONS = {f"{g['name']} (n={g['n']})": g["name"] for g in GRAPH_LIST}
+GAME_HISTORY_DIR = Path(__file__).parent / "game_history"
 
 # ── Session state init ────────────────────────────────────────────
 
@@ -45,6 +49,8 @@ def init_session():
         st.session_state.game_over = False
         st.session_state.auto_playing = False
         st.session_state.view_step = 0
+        st.session_state.graph_name = ""
+        st.session_state.last_export_path = ""
 
 
 init_session()
@@ -70,6 +76,41 @@ def start_game(graph_label: str, provider_name: str):
     st.session_state.auto_playing = False
     st.session_state.view_step = 0
     st.session_state.provider_name = provider_name
+    st.session_state.graph_name = graph_name
+    st.session_state.last_export_path = ""
+
+
+def export_chat_history() -> str:
+    """Write current game history to a JSON file and return its path."""
+    engine = st.session_state.engine
+    state = engine.get_state()
+    provider_name = st.session_state.get("provider_name", "")
+    graph_name = st.session_state.get("graph_name", "")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{graph_name}_{provider_name}_{timestamp}.json"
+
+    GAME_HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+    path = GAME_HISTORY_DIR / filename
+
+    payload = {
+        "exported_at": datetime.now().isoformat(timespec="seconds"),
+        "graph": graph_name,
+        "provider": provider_name,
+        "won": engine.is_won(),
+        "game_over": st.session_state.game_over,
+        "step": state["step"],
+        "red_count": state["red_count"],
+        "total_mutable": state["total_mutable"],
+        "move_history": state["move_history"],
+        "action_history": state.get("action_history", []),
+        "messages": st.session_state.messages,
+    }
+
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return str(path)
 
 
 def get_provider():
@@ -90,6 +131,10 @@ def step_game():
     """Execute one step: LLM decides, engine mutates."""
     engine = st.session_state.engine
     messages = st.session_state.messages
+
+    if engine.is_won():
+        st.session_state.game_over = True
+        return
 
     provider = get_provider()
     if provider is None:
@@ -150,6 +195,19 @@ with st.sidebar:
         if current_state["move_history"]:
             moves_str = " -> ".join(f"u{k}" for k in current_state["move_history"])
             st.text(f"Moves: {moves_str}")
+        if current_state.get("action_history"):
+            action_parts = []
+            for action in current_state["action_history"]:
+                if action["type"] == "mutate":
+                    action_parts.append(f"u{action['vertex']}")
+                else:
+                    action_parts.append(f"undo({action['vertex']})")
+            st.text("Actions: " + " -> ".join(action_parts))
+        if st.button("Export Chat History", use_container_width=True):
+            st.session_state.last_export_path = export_chat_history()
+            st.rerun()
+        if st.session_state.last_export_path:
+            st.caption(f"Saved: {st.session_state.last_export_path}")
 
 # ── Main area ─────────────────────────────────────────────────────
 

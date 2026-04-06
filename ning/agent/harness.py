@@ -5,24 +5,6 @@ Pure functions — no LLM calls, no state.
 
 import re
 
-SYSTEM_PROMPT = """\
-You are playing the green-red mutation game on a directed multigraph (quiver).
-
-## Rules
-- The graph has mutable vertices (1..n) and frozen vertices (1'..n').
-- On each turn you choose one mutable vertex k to mutate (μ_k).
-- Mutation μ_k does three things:
-  1. For every 2-path i→k→j, add an edge i→j (multiplicity multiplies).
-  2. Reverse all edges touching k.
-  3. Cancel opposite edge pairs.
-- Each mutable vertex is either GREEN or RED. A mutable vertex k is green (resp., red) if there is no arrow of the form i→k (resp., k→i) where i is frozen. In particular, in the initial state, all mutable vertices are green.
-- Your goal: make ALL mutable vertices RED.
-
-## Output format
-Reply with a single integer — the vertex number to mutate. Example: 3
-You may include brief reasoning before the number, but the last number in your response will be taken as your action.
-"""
-
 
 def render_state(state: dict) -> str:
     """Render engine state as text for the LLM.
@@ -47,6 +29,20 @@ def render_state(state: dict) -> str:
         color_parts.append(f"{v}({tag})")
     lines.append("Vertices: " + " ".join(color_parts))
 
+    # # Edges among mutable vertices only
+    # mutable_edges = [(s, d, c) for s, d, c in edges if s <= n and d <= n]
+    # if mutable_edges:
+    #     edge_strs = []
+    #     for s, d, c in mutable_edges:
+    #         if c == 1:
+    #             edge_strs.append(f"{s}→{d}")
+    #         else:
+    #             edge_strs.append(f"{s}→{d} (×{c})")
+    #     lines.append("Edges: " + ", ".join(edge_strs))
+    # else:
+    #     lines.append("Edges: (none)")
+
+    # All edges
     if edges:
         edge_strs = []
         for s, d, c in edges:
@@ -68,13 +64,18 @@ def render_diff(state: dict) -> str:
         state: Dict from engine.mutate() (must contain "diff" key).
     """
     diff = state["diff"]
-    k = diff["mutated_vertex"]
+    action_type = diff.get("action_type", "mutate")
     before = diff["red_count_before"]
     after = diff["red_count_after"]
     n = state["total_mutable"]
 
     lines = []
-    lines.append(f"Mutated vertex {k}.")
+    if action_type == "undo":
+        k = diff["undone_vertex"]
+        lines.append(f"Undid last move on vertex {k}.")
+    else:
+        k = diff["mutated_vertex"]
+        lines.append(f"Mutated vertex {k}.")
 
     # Color changes
     for v, (old, new) in sorted(diff["color_changes"].items()):
@@ -89,6 +90,34 @@ def render_diff(state: dict) -> str:
     return "\n".join(lines)
 
 
+def parse_action_or_undo(text: str, n: int) -> int | str | None:
+    """Extract either a mutable vertex number or an undo command.
+
+    Returns:
+        int: Vertex ID in 1..n.
+        "undo": If text requests undo.
+        None: If no valid command found.
+    """
+    candidates: list[tuple[int, int | str]] = []
+
+    # Collect undo commands.
+    for m in re.finditer(r"\bundo\b|\bu\b", text.strip().lower()):
+        candidates.append((m.end(), "undo"))
+
+    # Collect valid vertex numbers.
+    for m in re.finditer(r"\d+", text):
+        k = int(m.group())
+        if 1 <= k <= n:
+            candidates.append((m.end(), k))
+
+    if not candidates:
+        return None
+
+    # Use the last explicit command in the response.
+    candidates.sort(key=lambda x: x[0])
+    return candidates[-1][1]
+
+
 def parse_action(text: str, n: int) -> int | None:
     """Extract a mutable vertex number from LLM output.
 
@@ -99,15 +128,13 @@ def parse_action(text: str, n: int) -> int | None:
         text: Raw LLM output.
         n: Number of mutable vertices (valid range is 1..n).
     """
-    numbers = re.findall(r"\d+", text)
-    for num_str in reversed(numbers):
-        k = int(num_str)
-        if 1 <= k <= n:
-            return k
+    command = parse_action_or_undo(text, n)
+    if isinstance(command, int):
+        return command
     return None
 
 
-def format_error(text: str, n: int) -> str:
+def format_error(text: str, n: int, allow_undo: bool = False) -> str:
     """Generate an error message when parse_action fails.
 
     Args:
@@ -116,7 +143,11 @@ def format_error(text: str, n: int) -> str:
     """
     return (
         f"Could not parse a valid vertex from your response. "
-        f"Please reply with a single integer between 1 and {n}."
+        + (
+            f"Please reply with a single integer between 1 and {n}, or 'undo'."
+            if allow_undo
+            else f"Please reply with a single integer between 1 and {n}."
+        )
     )
 
 
