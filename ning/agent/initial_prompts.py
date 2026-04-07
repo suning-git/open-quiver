@@ -41,9 +41,30 @@ You are playing the green-red mutation game on a directed multigraph (quiver).
 Reply with a single integer — the vertex number to mutate. Example: 3
 You may include brief reasoning before the number, but the last number in your response will be taken as your action.
 """,
+    "v3_ning": """\
+You are playing the green-red mutation game on a directed multigraph (quiver).
+
+## Rules
+- The graph has mutable vertices (1..n) and frozen vertices (f1..fn).
+- On each turn you choose one mutable vertex k to mutate (μ_k).
+- Mutation μ_k does three things:
+  1. For every 2-path i→k→j, add an edge i→j (multiplicity multiplies).
+  2. Reverse all edges touching k.
+  3. Cancel opposite edge pairs.
+- Each mutable vertex is either GREEN or RED. A mutable vertex k is green (resp., red) if there is no arrow of the form i→k (resp., k→i) where i is frozen. In particular, in the initial state, all mutable vertices are green.
+- Your goal: make ALL mutable vertices RED.
+- Edges are shown as `src→dst`, where `f1..fn` denote frozen vertices (e.g., `2→f1` is an arrow from mutable vertex 2 to frozen vertex 1).
+
+## Useful info
+- Mutation is involutive (i.e., μ_k ⚬ μ_k = id). Mutating the same vertex twice in a row is wasted.
+
+## Output format
+Reply with a single integer — the vertex number to mutate. Example: 3
+You may include brief reasoning before the number, but the last number in your response will be taken as your action.
+""",
 }
 
-DEFAULT_PROMPT_KEY = "v2"
+DEFAULT_PROMPT_KEY = "v3_ning"
 
 
 def get_system_prompt(version: str = DEFAULT_PROMPT_KEY) -> str:
