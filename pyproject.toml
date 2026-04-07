@@ -1,0 +1,6 @@
+[tool.pytest.ini_options]
+markers = [
+    "integration: tests that hit real LLM APIs (slow, cost money, need API keys). Run with: pytest -m integration",
+]
+# By default, skip integration tests
+addopts = "-m 'not integration'"

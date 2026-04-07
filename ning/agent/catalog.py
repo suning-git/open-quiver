@@ -7,11 +7,10 @@ Each JSON file contains:
 """
 
 import json
-from pathlib import Path
 
 import numpy as np
 
-GAMES_DIR = Path(__file__).parent / "games"
+from common import GAMES_DIR  # See common/games/README.md for the file format.
 
 
 def list_graphs() -> list[dict]:

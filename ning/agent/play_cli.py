@@ -1,9 +1,9 @@
 """CLI entry point: run a green-red game in the terminal.
 
 Usage:
-    python -m ning.agent.play_cli                       # default: deepseek, linear_2
-    python -m ning.agent.play_cli deepseek test1_07_n4  # specify provider and graph
-    python -m ning.agent.play_cli --list                # list available graphs
+    python -m ning.agent.play_cli                              # default: deepseek-chat, linear_2
+    python -m ning.agent.play_cli deepseek-chat test1_07_n4    # specify provider and graph
+    python -m ning.agent.play_cli --list                       # list available graphs
 """
 
 import os
@@ -19,32 +19,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from ning.agent.agent import run_game_from_matrix
+from ning.agent.game_session_runner import run_game_from_matrix
 from ning.agent.catalog import list_graphs, get_graph
-from ning.agent.llm_provider import OpenAICompatProvider
-
-PROVIDERS = {
-    "deepseek": {
-        "model": "deepseek-chat",
-        "base_url": "https://api.deepseek.com",
-        "api_key_env": "DEEPSEEK_API_KEY",
-    },
-    "gpt-5.4-mini": {
-        "model": "gpt-5.4-mini",
-        "base_url": "https://api.openai.com/v1",
-        "api_key_env": "OPENAI_API_KEY",
-    },
-    "gpt-5.4": {
-        "model": "gpt-5.4",
-        "base_url": "https://api.openai.com/v1",
-        "api_key_env": "OPENAI_API_KEY",
-    },
-    "gpt-5.4-nano": {
-        "model": "gpt-5.4-nano",
-        "base_url": "https://api.openai.com/v1",
-        "api_key_env": "OPENAI_API_KEY",
-    },
-}
+from ning.agent.provider_registry import (
+    create_provider,
+    get_provider_config,
+    is_known_provider,
+    list_provider_names,
+)
 
 
 def main():
@@ -52,15 +34,15 @@ def main():
         print("Available graphs:")
         for g in list_graphs():
             print(f"  {g['name']}  (n={g['n']})")
-        print(f"\nAvailable providers: {', '.join(PROVIDERS.keys())}")
+        print(f"\nAvailable providers: {', '.join(list_provider_names())}")
         return
 
-    provider_name = sys.argv[1] if len(sys.argv) > 1 else "deepseek"
+    provider_name = sys.argv[1] if len(sys.argv) > 1 else "deepseek-chat"
     graph_name = sys.argv[2] if len(sys.argv) > 2 else "linear_2"
 
-    if provider_name not in PROVIDERS:
+    if not is_known_provider(provider_name):
         print(f"Unknown provider: {provider_name}")
-        print(f"Choose from: {', '.join(PROVIDERS.keys())}")
+        print(f"Choose from: {', '.join(list_provider_names())}")
         sys.exit(1)
 
     try:
@@ -70,17 +52,12 @@ def main():
         print("Use --list to see available graphs.")
         sys.exit(1)
 
-    cfg = PROVIDERS[provider_name]
-    api_key = os.getenv(cfg["api_key_env"], "")
-    if not api_key:
-        print(f"Set {cfg['api_key_env']} in .env first.")
+    cfg = get_provider_config(provider_name)
+    try:
+        provider = create_provider(provider_name)
+    except RuntimeError as e:
+        print(str(e))
         sys.exit(1)
-
-    provider = OpenAICompatProvider(
-        model=cfg["model"],
-        base_url=cfg["base_url"],
-        api_key=api_key,
-    )
 
     print(f"Provider: {provider_name} ({cfg['model']})")
     print(f"Graph: {graph_name} (n={graph_data['n']})")

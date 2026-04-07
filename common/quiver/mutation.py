@@ -1,7 +1,7 @@
 """Pure functions for quiver mutation on exchange matrices.
 
 All functions are stateless: matrix in, matrix out.
-See ning/graph_matrix_rule.md for the math.
+See MATH.md (in this directory) for the math.
 """
 
 import numpy as np

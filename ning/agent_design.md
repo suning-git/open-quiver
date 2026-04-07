@@ -4,7 +4,7 @@
 
 构建一个 agent 系统，让 LLM 自动玩绿红游戏：从 $\text{framed}(A)$（全绿）出发，通过选择内点执行 mutation $\mu_k$，到达全红状态。
 
-游戏规则见 [graph_rule.md](graph_rule.md)，矩阵表达见 [graph_matrix_rule.md](graph_matrix_rule.md)。
+游戏规则见 [graph_rule.md](graph_rule.md)，矩阵表达见 [common/quiver/MATH.md](../common/quiver/MATH.md)。
 
 ---
 
@@ -45,7 +45,7 @@ Agent 层内部进一步分离出 LLM 适配层，以支持多模型切换：
 ### 内部表示
 
 - 用 $n \times 2n$ 交换矩阵 $B = (B_0 \mid B_f)$ 表示图（内点数 = 冻结点数 = $n$）
-- mutation 通过矩阵公式直接计算（见 [graph_matrix_rule.md](graph_matrix_rule.md)）
+- mutation 通过矩阵公式直接计算（见 [common/quiver/MATH.md](../common/quiver/MATH.md)）
 - `mutation.py` 中的纯函数可独立于 Engine 使用
 
 ### 对外接口
