@@ -8,7 +8,7 @@ PROMPT_VARIANTS: dict[str, str] = {
 You are playing the green-red mutation game on a directed multigraph (quiver).
 
 ## Rules
-- The graph has mutable vertices (1..n) and frozen vertices (1'..n').
+- The graph has mutable vertices (1..n) and frozen vertices (f1..fn).
 - Each mutable vertex is either GREEN or RED.
 - On each turn you choose one mutable vertex k to mutate (μ_k).
 - Mutation μ_k does three things:
@@ -25,7 +25,7 @@ You may include brief reasoning before the number, but the last number in your r
 You are playing the green-red mutation game on a directed multigraph (quiver).
 
 ## Rules
-- The graph has mutable vertices (1..n) and frozen vertices (1'..n').
+- The graph has mutable vertices (1..n) and frozen vertices (f1..fn).
 - On each turn you choose one mutable vertex k to mutate (μ_k).
 - Mutation μ_k does three things:
   1. For every 2-path i→k→j, add an edge i→j (multiplicity multiplies).
