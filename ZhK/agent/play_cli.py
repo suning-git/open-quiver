@@ -1,9 +1,9 @@
 """CLI entry point: run a green-red game in the terminal.
 
 Usage:
-    python -m ning.agent.play_cli                       # default: deepseek, linear_2
-    python -m ning.agent.play_cli deepseek test1_07_n4  # specify provider and graph
-    python -m ning.agent.play_cli --list                # list available graphs
+    python -m ning.agent.play_cli                              # default: deepseek-chat, linear_2
+    python -m ning.agent.play_cli deepseek-chat test1_07_n4    # specify provider and graph
+    python -m ning.agent.play_cli --list                       # list available graphs
 """
 
 import os
@@ -37,7 +37,7 @@ def main():
         print(f"\nAvailable providers: {', '.join(list_provider_names())}")
         return
 
-    provider_name = sys.argv[1] if len(sys.argv) > 1 else "deepseek"
+    provider_name = sys.argv[1] if len(sys.argv) > 1 else "deepseek-chat"
     graph_name = sys.argv[2] if len(sys.argv) > 2 else "linear_2"
 
     if not is_known_provider(provider_name):

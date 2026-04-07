@@ -1,8 +1,8 @@
 """Unit tests for one-turn game runner helpers."""
 
-from ning.agent.engine import QuiverEngine
-from ning.agent.game_turn_runner import initialize_messages, run_turn
-from ning.agent.llm_provider import MockProvider
+from ZhK.agent.engine import QuiverEngine
+from ZhK.agent.game_turn_runner import initialize_messages, run_turn
+from ZhK.agent.llm_provider import MockProvider
 
 
 def _init_messages(engine: QuiverEngine) -> list[dict]:

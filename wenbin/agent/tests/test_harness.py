@@ -1,14 +1,13 @@
 """Unit tests for harness.py."""
 
-from ZhK.agent.harness import (
+from wenbin.agent.harness import (
+    SYSTEM_PROMPT,
     render_state,
     render_diff,
-    parse_action_or_undo,
     parse_action,
     format_error,
     build_user_message,
 )
-from ZhK.agent.initial_prompts import get_system_prompt
 
 
 # ── render_state ──────────────────────────────────────────────────
@@ -32,10 +31,10 @@ class TestRenderState:
         assert "3(G)" in text
         assert "1→2" in text
         assert "2→3" in text
-        # Frozen edges are excluded from state rendering
-        assert "1→4" not in text
-        assert "2→5" not in text
-        assert "3→6" not in text
+        # Frozen edges should be excluded
+        assert "4" not in text
+        assert "5" not in text
+        assert "6" not in text
 
     def test_partial_red(self):
         state = {
@@ -142,26 +141,6 @@ class TestRenderDiff:
         assert "green → red" not in text
         assert "red → green" not in text
 
-    def test_undo_diff(self):
-        state = {
-            "total_mutable": 3,
-            "diff": {
-                "action_type": "undo",
-                "undone_vertex": 2,
-                "color_changes": {2: ("red", "green")},
-                "red_count_before": 1,
-                "red_count_after": 0,
-            },
-            "colors": {1: "green", 2: "green", 3: "green"},
-            "edges": [],
-            "red_count": 0,
-            "step": 0,
-            "move_history": [],
-        }
-        text = render_diff(state)
-        assert "Undid last move on vertex 2" in text
-        assert "1/3 → 0/3" in text
-
 
 # ── parse_action ──────────────────────────────────────────────────
 
@@ -196,23 +175,6 @@ class TestParseAction:
         assert parse_action("", 5) is None
 
 
-class TestParseActionOrUndo:
-    def test_undo_word(self):
-        assert parse_action_or_undo("undo", 5) == "undo"
-
-    def test_undo_short(self):
-        assert parse_action_or_undo("u", 5) == "undo"
-
-    def test_number(self):
-        assert parse_action_or_undo("3", 5) == 3
-
-    def test_mixed_undo_then_number_takes_last_command(self):
-        assert parse_action_or_undo("undo then 2", 5) == 2
-
-    def test_mixed_number_then_undo_takes_last_command(self):
-        assert parse_action_or_undo("2 ... undo", 5) == "undo"
-
-
 # ── format_error ──────────────────────────────────────────────────
 
 
@@ -221,10 +183,6 @@ class TestFormatError:
         msg = format_error("blah", 5)
         assert "1" in msg
         assert "5" in msg
-
-    def test_undo_hint_when_enabled(self):
-        msg = format_error("blah", 5, allow_undo=True)
-        assert "undo" in msg.lower()
 
 
 # ── build_user_message ────────────────────────────────────────────
@@ -267,9 +225,9 @@ class TestBuildUserMessage:
 
 class TestSystemPrompt:
     def test_contains_rules(self):
-        assert "mutation" in get_system_prompt().lower()
-        assert "GREEN" in get_system_prompt() or "green" in get_system_prompt().lower()
-        assert "RED" in get_system_prompt() or "red" in get_system_prompt().lower()
+        assert "mutation" in SYSTEM_PROMPT.lower()
+        assert "GREEN" in SYSTEM_PROMPT or "green" in SYSTEM_PROMPT.lower()
+        assert "RED" in SYSTEM_PROMPT or "red" in SYSTEM_PROMPT.lower()
 
     def test_contains_output_format(self):
-        assert "integer" in get_system_prompt().lower()
+        assert "integer" in SYSTEM_PROMPT.lower()

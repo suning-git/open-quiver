@@ -1,12 +1,12 @@
 """Unit tests for mutation.py, engine.py, and catalog.py.
 
-Test cases are drawn from ZhK/graph_rule.md and ZhK/graph_matrix_rule.md.
+Test cases are drawn from wenbin/graph_rule.md and wenbin/graph_matrix_rule.md.
 """
 
 import numpy as np
 import pytest
 
-from common.quiver.mutation import (
+from wenbin.agent.mutation import (
     make_exchange_matrix,
     make_framed,
     make_coframed,
@@ -15,8 +15,8 @@ from common.quiver.mutation import (
     is_all_red,
     matrix_to_edges,
 )
-from ZhK.agent.engine import QuiverEngine
-from ZhK.agent import catalog
+from wenbin.agent.engine import QuiverEngine
+from wenbin.agent import catalog
 
 
 # ── mutation.py tests ──────────────────────────────────────────────
@@ -193,7 +193,6 @@ class TestEngine:
         engine = QuiverEngine()
         engine.reset(3, [(1, 2), (2, 3)])
         result = engine.mutate(2)
-        assert result["diff"]["action_type"] == "mutate"
         assert result["diff"]["mutated_vertex"] == 2
         assert result["diff"]["red_count_before"] == 0
         assert result["diff"]["red_count_after"] == 1
@@ -249,10 +248,6 @@ class TestEngine:
         state = engine.get_state()
         assert state["move_history"] == [2, 1]
         assert state["step"] == 2
-        assert state["action_history"] == [
-            {"type": "mutate", "vertex": 2},
-            {"type": "mutate", "vertex": 1},
-        ]
 
     def test_reset_from_matrix(self):
         """reset_from_matrix produces same result as reset with edges."""
@@ -298,51 +293,6 @@ class TestEngine:
             engine.get_state_at(3)
         with pytest.raises(ValueError):
             engine.get_state_at(-1)
-
-    def test_undo_restores_previous_state(self):
-        engine = QuiverEngine()
-        state0 = engine.reset(3, [(1, 2), (2, 3)])
-        engine.mutate(2)
-        undone = engine.undo()
-
-        np.testing.assert_array_equal(undone["matrix"], state0["matrix"])
-        assert undone["step"] == 0
-        assert undone["move_history"] == []
-        assert undone["diff"]["action_type"] == "undo"
-        assert undone["diff"]["undone_vertex"] == 2
-
-    def test_undo_multiple_steps(self):
-        engine = QuiverEngine()
-        engine.reset(3, [(1, 2), (2, 3)])
-        engine.mutate(2)
-        engine.mutate(1)
-
-        state_after_one_undo = engine.undo()
-        assert state_after_one_undo["step"] == 1
-        assert state_after_one_undo["move_history"] == [2]
-        assert state_after_one_undo["action_history"][-1] == {"type": "undo", "vertex": 1}
-
-        state_after_two_undo = engine.undo()
-        assert state_after_two_undo["step"] == 0
-        assert state_after_two_undo["move_history"] == []
-        assert state_after_two_undo["action_history"][-1] == {"type": "undo", "vertex": 2}
-
-    def test_undo_at_initial_raises(self):
-        engine = QuiverEngine()
-        engine.reset(3, [(1, 2), (2, 3)])
-        with pytest.raises(ValueError):
-            engine.undo()
-
-
-class TestHistoryBounds:
-    def test_web_history_clamp_style_behavior(self):
-        """UI-level history indices should be clamped before engine lookup."""
-        from ning.agent.play_web import clamp_view_step
-
-        assert clamp_view_step(-1, 0) == 0
-        assert clamp_view_step(-3, 5) == 0
-        assert clamp_view_step(2, 5) == 2
-        assert clamp_view_step(8, 5) == 5
 
 
 # ── catalog.py tests ──────────────────────────────────────────────

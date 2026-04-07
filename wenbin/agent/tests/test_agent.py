@@ -1,8 +1,8 @@
 """Tests for the agent game loop using MockProvider."""
 
-from ZhK.agent.game_session_runner import run_game, run_game_from_matrix
-from common.quiver.mutation import make_exchange_matrix
-from ZhK.agent.llm_provider import MockProvider
+from wenbin.agent.agent import run_game, run_game_from_matrix
+from wenbin.agent.mutation import make_exchange_matrix
+from wenbin.agent.llm_provider import MockProvider
 
 
 class TestRunGameWin:
@@ -103,7 +103,7 @@ class TestRunGameFromMatrix:
 
     def test_catalog_graph(self):
         """run_game_from_matrix works with a catalog graph."""
-        from ning.agent import catalog
+        from wenbin.agent import catalog
 
         g = catalog.get_graph("test1_06_n3")
         sol = catalog.get_solution("test1_06_n3")

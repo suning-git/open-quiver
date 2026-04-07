@@ -1,6 +1,6 @@
 import json
 import re
-from typing import List, Set
+from typing import List, Optional, Set
 from .core import ArrowCounts, IceQuiver, ice_quiver_from_exmat
 from .operations import _validate_2_acyclic_counts
 
@@ -98,7 +98,7 @@ def parse_quiver_edgelist(text: str) -> IceQuiver:
     frozen: Set[int] = set()
     counts: ArrowCounts = {}
     in_arrows = False
-    declared_n_total: int | None = None
+    declared_n_total: Optional[int] = None
 
     for raw in text.splitlines():
         line = raw.strip()
@@ -187,8 +187,8 @@ def parse_exchange_matrix(text: str) -> IceQuiver:
     Whitespace-separated integers are accepted. Commas and simple brackets
     are tolerated (e.g. `[0, 1, -1]`).
     """
-    n_mutable: int | None = None
-    m_total: int | None = None
+    n_mutable: Optional[int] = None
+    m_total: Optional[int] = None
     matrix_lines: List[str] = []
     in_matrix = False
 

@@ -1,0 +1,9 @@
+# First-run email prompt: skipped when headless=true and no ~/.streamlit/credentials.toml
+# (see streamlit.runtime.credentials.check_credentials). Open http://localhost:8501 manually.
+[server]
+headless = true
+# Avoid watchdog FSEvents crash on some macOS + Python builds (SystemError: Cannot start fsevents stream).
+fileWatcherType = "poll"
+
+[browser]
+gatherUsageStats = false
