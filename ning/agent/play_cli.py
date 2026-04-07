@@ -1,9 +1,10 @@
 """CLI entry point: run a green-red game in the terminal.
 
 Usage:
-    python -m ning.agent.play_cli                              # default: deepseek-chat, linear_2
-    python -m ning.agent.play_cli deepseek-chat test1_07_n4    # specify provider and graph
-    python -m ning.agent.play_cli --list                       # list available graphs
+    python -m ning.agent.play_cli                                       # default: deepseek-chat, linear_2
+    python -m ning.agent.play_cli deepseek-chat test1_07_n4             # specify provider and graph
+    python -m ning.agent.play_cli gpt-5.4-mini linear_2 --max-steps 2   # cap mutation steps
+    python -m ning.agent.play_cli --list                                # list available graphs
 """
 
 import os
@@ -29,6 +30,28 @@ from ning.agent.provider_registry import (
 )
 
 
+def _parse_max_steps(argv: list[str]) -> tuple[list[str], int]:
+    """Pop --max-steps N from argv, return (remaining_argv, max_steps)."""
+    max_steps = 50
+    remaining = []
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--max-steps":
+            if i + 1 >= len(argv):
+                raise SystemExit("--max-steps requires an integer value")
+            try:
+                max_steps = int(argv[i + 1])
+            except ValueError:
+                raise SystemExit(
+                    f"--max-steps value must be an integer, got: {argv[i + 1]}"
+                )
+            i += 2
+        else:
+            remaining.append(argv[i])
+            i += 1
+    return remaining, max_steps
+
+
 def main():
     if "--list" in sys.argv:
         print("Available graphs:")
@@ -37,8 +60,10 @@ def main():
         print(f"\nAvailable providers: {', '.join(list_provider_names())}")
         return
 
-    provider_name = sys.argv[1] if len(sys.argv) > 1 else "deepseek-chat"
-    graph_name = sys.argv[2] if len(sys.argv) > 2 else "linear_2"
+    argv, max_steps = _parse_max_steps(sys.argv[1:])
+
+    provider_name = argv[0] if len(argv) > 0 else "deepseek-chat"
+    graph_name = argv[1] if len(argv) > 1 else "linear_2"
 
     if not is_known_provider(provider_name):
         print(f"Unknown provider: {provider_name}")
@@ -61,9 +86,10 @@ def main():
 
     print(f"Provider: {provider_name} ({cfg['model']})")
     print(f"Graph: {graph_name} (n={graph_data['n']})")
+    print(f"Max steps: {max_steps}")
     print()
 
-    result = run_game_from_matrix(graph_data["B_A"], provider, max_steps=50)
+    result = run_game_from_matrix(graph_data["B_A"], provider, max_steps=max_steps)
 
     print(f"Result: {'WON' if result.won else 'LOST'} ({result.reason})")
     print(f"Steps: {result.steps}")

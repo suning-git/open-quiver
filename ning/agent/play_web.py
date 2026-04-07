@@ -131,11 +131,21 @@ def export_chat_history() -> str:
     GAME_HISTORY_DIR.mkdir(parents=True, exist_ok=True)
     path = GAME_HISTORY_DIR / filename
 
+    # Capture the first ~200 chars of the actual system prompt that was sent
+    # to the LLM. This is the source of truth — useful when debugging cases
+    # where the registered prompt module disagrees with what was actually used
+    # (e.g. Streamlit module caching after editing initial_prompts.py).
+    system_prompt_preview = ""
+    msgs = st.session_state.messages
+    if msgs and msgs[0].get("role") == "system":
+        system_prompt_preview = msgs[0].get("content", "")[:200]
+
     payload = {
         "exported_at": datetime.now().isoformat(timespec="seconds"),
         "graph": graph_name,
         "provider": provider_name,
         "prompt_version": st.session_state.get("prompt_version", ""),
+        "system_prompt_preview": system_prompt_preview,
         "won": engine.is_won(),
         "game_over": st.session_state.game_over,
         "step": state["step"],
