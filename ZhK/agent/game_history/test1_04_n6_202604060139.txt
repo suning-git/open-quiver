@@ -1,0 +1,260 @@
+Step 0 | Red: 0/6 Vertices: 1(G) 2(G) 3(G) 4(G) 5(G) 6(G) Edges: 1→2, 1→4, 1→7, 2→3, 2→5, 2→8, 3→6, 3→9, 4→5, 4→10, 5→6, 5→11, 6→12
+
+Your move?
+
+Let's analyze the graph.
+
+We have mutable vertices 1–6 (all green initially) and frozen vertices 7–12 (each connected to one mutable vertex: 7 from 1, 8 from 2, 9 from 3, 10 from 4, 11 from 5, 12 from 6).
+
+Edges given:
+1→2, 1→4, 1→7
+2→3, 2→5, 2→8
+3→6, 3→9
+4→5, 4→10
+5→6, 5→11
+6→12
+
+No incoming edges from frozen vertices to mutable vertices, so all mutable vertices are green.
+
+Goal: make all mutable vertices red. A mutable vertex is red if there is no arrow from a frozen vertex to it, but there is an arrow from it to a frozen vertex? Wait, definition:
+
+    GREEN: no arrow i→k where i is frozen.
+    RED: no arrow k→i where i is frozen.
+
+So to make a vertex red, we must remove all edges from it to frozen vertices. But initially, each mutable vertex k has exactly one edge k→(k+6) to a frozen vertex. So all are green, not red.
+
+To make vertex k red, we need to reverse that edge so it becomes (k+6)→k. That means we need to mutate along a path that creates an arrow from frozen to mutable.
+
+Let’s try to make vertex 1 red first. Currently: 1→7 (frozen 7). To make 1 red, we need no 1→frozen edges. That means we must reverse 1→7 into 7→1. How?
+Mutation at 1 will reverse all edges touching 1, so 1→7 becomes 7→1. That’s good. But mutation at 1 also affects other edges:
+1→2, 1→4, 1→7 become 2→1, 4→1, 7→1.
+
+But we must check 2-paths:
+Before mutating 1:
+
+    For i→1→j: no i→1 edges initially, so no 2-paths through 1 as middle. So step 1 adds nothing.
+    Step 2: reverse all edges touching 1:
+    1→2 → 2→1
+    1→4 → 4→1
+    1→7 → 7→1
+
+Step 3: cancel opposites: none yet.
+
+After μ1:
+Edges:
+2→1, 4→1, 7→1
+2→3, 2→5, 2→8
+3→6, 3→9
+4→5, 4→10
+5→6, 5→11
+6→12
+
+Now vertex 1: incoming edges from 2,4,7 (7 frozen), so 1 is red (no edge from 1 to frozen). Good.
+
+But other vertices:
+Vertex 2: has 2→8 (to frozen), so 2 is green.
+Vertex 3: 3→9 (green).
+Vertex 4: 4→10 (green).
+Vertex 5: 5→11 (green).
+Vertex 6: 6→12 (green).
+
+We made 1 red.
+
+Now, to make 2 red, we need to reverse 2→8 into 8→2. That suggests mutating at 2.
+
+But before mutating 2, check current edges to/from 2:
+2→1, 2→3, 2→5, 2→8.
+
+If we mutate at 2:
+Step 1: 2-paths through 2:
+i→2→j:
+
+    7→1 is from frozen 7 to 1, but 1→2? No, 1→2 is gone, now 2→1. So no i→2 except maybe? Wait, check:
+    Incoming to 2: from who? Currently: no one points to 2 except maybe? Actually, check list:
+    Edges:
+    2→1, 4→1, 7→1
+    2→3, 2→5, 2→8
+    3→6, 3→9
+    4→5, 4→10
+    5→6, 5→11
+    6→12
+
+So incoming to 2: none. So step 1 adds nothing.
+
+Step 2: reverse edges touching 2:
+2→1 → 1→2
+2→3 → 3→2
+2→5 → 5→2
+2→8 → 8→2
+
+Step 3: cancel opposites: none.
+
+After μ2:
+Edges:
+1→2, 4→1, 7→1
+3→2, 5→2, 8→2
+3→6, 3→9
+4→5, 4→10
+5→6, 5→11
+6→12
+
+Now vertex 2: incoming from 3,5,8 (8 frozen) → so 2 is red (no edge 2→frozen).
+
+Vertex 1: still has 1→2 (to mutable), 7→1 (frozen to 1) so 1 is red (no 1→frozen). Good.
+
+We have red: 1,2.
+
+Continue similarly:
+Vertex 3: currently 3→2, 3→6, 3→9. Has 3→9 (to frozen), so green.
+
+To make 3 red, mutate at 3.
+
+But careful: mutating at 3 will affect edges to frozen 9.
+
+Current edges to/from 3:
+3→2, 3→6, 3→9.
+Incoming to 3: none.
+
+μ3:
+Step 1: no i→3 edges, so adds nothing.
+Step 2: reverse:
+3→2 → 2→3
+3→6 → 6→3
+3→9 → 9→3
+
+Step 3: cancel opposites: none.
+
+After μ3:
+Edges:
+1→2, 4→1, 7→1
+2→3, 8→2
+6→3, 9→3
+4→5, 4→10
+5→2, 5→6, 5→11
+6→12
+
+Check vertex 3: incoming from 2,6,9 (9 frozen) → red.
+
+Now red: 1,2,3.
+
+Vertex 4: currently 4→1, 4→5, 4→10. Has 4→10 (to frozen) → green.
+
+Mutate at 4:
+Incoming to 4: none currently.
+
+Step 1: no i→4, so adds nothing.
+Step 2: reverse:
+4→1 → 1→4
+4→5 → 5→4
+4→10 → 10→4
+
+After μ4:
+Edges:
+1→2, 1→4, 7→1
+2→3, 8→2
+6→3, 9→3
+5→4, 10→4
+5→2, 5→6, 5→11
+6→12
+
+Vertex 4: incoming from 1,5,10 (10 frozen) → red.
+
+Red: 1,2,3,4.
+
+Vertex 5: currently 5→2, 5→4, 5→6, 5→11. Has 5→11 (to frozen) → green.
+
+Mutate at 5:
+Incoming to 5: from who? Currently: 5→4, 5→2, etc. Wait, incoming edges to 5: none? Check:
+Edges to 5: from 4? No, 4→5 gone, now 5→4. So no incoming to 5.
+
+Step 1: nothing.
+Step 2: reverse:
+5→2 → 2→5
+5→4 → 4→5
+5→6 → 6→5
+5→11 → 11→5
+
+After μ5:
+Edges:
+1→2, 1→4, 7→1
+2→3, 2→5, 8→2
+6→3, 9→3
+4→5, 10→4
+6→5, 11→5
+6→12
+
+Vertex 5: incoming from 2,4,6,11 (11 frozen) → red.
+
+Red: 1,2,3,4,5.
+
+Vertex 6: currently 6→3, 6→5, 6→12. Has 6→12 (to frozen) → green.
+
+Mutate at 6:
+Incoming to 6: from 5? No, 5→6 gone, now 6→5. So none.
+
+Step 1: nothing.
+Step 2: reverse:
+6→3 → 3→6
+6→5 → 5→6
+6→12 → 12→6
+
+After μ6:
+Edges:
+1→2, 1→4, 7→1
+2→3, 2→5, 8→2
+3→6, 9→3
+4→5, 10→4
+5→6, 11→5
+12→6
+
+Vertex 6: incoming from 3,5,12 (12 frozen) → red.
+
+All mutable vertices now red.
+
+Sequence: mutate 1,2,3,4,5,6.
+
+We start at step 0, so first move: mutate 1.
+
+Move: 1
+
+Mutated vertex 1. Vertex 1: green → red Red: 0/6 → 1/6
+
+Step 1 | Red: 1/6 Vertices: 1(R) 2(G) 3(G) 4(G) 5(G) 6(G) Edges: 7→1, 2→1, 2→3, 2→5, 2→8, 3→6, 3→9, 4→1, 4→5, 4→10, 5→6, 5→11, 6→12
+
+Your move?
+
+2
+
+Mutated vertex 2. Vertex 2: green → red Red: 1/6 → 2/6
+
+Step 2 | Red: 2/6 Vertices: 1(R) 2(R) 3(G) 4(G) 5(G) 6(G) Edges: 1→2, 7→1, 8→2, 3→2, 3→6, 3→9, 4→1, 4→5, 4→10, 5→2, 5→6, 5→11, 6→12
+
+Your move?
+
+3
+
+Mutated vertex 3. Vertex 3: green → red Red: 2/6 → 3/6
+
+Step 3 | Red: 3/6 Vertices: 1(R) 2(R) 3(R) 4(G) 5(G) 6(G) Edges: 1→2, 7→1, 2→3, 8→2, 9→3, 4→1, 4→5, 4→10, 5→2, 5→6, 5→11, 6→3, 6→12
+
+Your move?
+
+4
+
+Mutated vertex 4. Vertex 4: green → red Red: 3/6 → 4/6
+
+Step 4 | Red: 4/6 Vertices: 1(R) 2(R) 3(R) 4(R) 5(G) 6(G) Edges: 1→2, 1→4, 7→1, 2→3, 8→2, 9→3, 10→4, 5→2, 5→4, 5→6, 5→11, 6→3, 6→12
+
+Your move?
+
+5
+
+Mutated vertex 5. Vertex 5: green → red Red: 4/6 → 5/6
+
+Step 5 | Red: 5/6 Vertices: 1(R) 2(R) 3(R) 4(R) 5(R) 6(G) Edges: 1→2, 1→4, 7→1, 2→3, 2→5, 8→2, 9→3, 4→5, 10→4, 11→5, 6→3, 6→5, 6→12
+
+Your move?
+
+6
+
+Mutated vertex 6. Vertex 6: green → red Red: 5/6 → 6/6
