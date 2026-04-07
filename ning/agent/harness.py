@@ -9,6 +9,11 @@ import re
 from .initial_prompts import SYSTEM_PROMPT  # noqa: F401
 
 
+def _format_vertex(v: int, n: int) -> str:
+    """Format vertex ID: mutable as int, frozen as f1..fn."""
+    return str(v) if v <= n else f"f{v - n}"
+
+
 def render_state(state: dict) -> str:
     """Render engine state as text for the LLM.
 
@@ -24,7 +29,7 @@ def render_state(state: dict) -> str:
     lines = []
     lines.append(f"Step {step} | Red: {red_count}/{n}")
 
-    # Vertex colors
+    # Vertex colors (mutable only)
     color_parts = []
     for v in range(1, n + 1):
         c = colors[v]
@@ -32,15 +37,16 @@ def render_state(state: dict) -> str:
         color_parts.append(f"{v}({tag})")
     lines.append("Vertices: " + " ".join(color_parts))
 
-    # Edges among mutable vertices only
-    mutable_edges = [(s, d, c) for s, d, c in edges if s <= n and d <= n]
-    if mutable_edges:
+    # All edges (mutable-mutable and frozen edges in either direction)
+    if edges:
         edge_strs = []
-        for s, d, c in mutable_edges:
+        for s, d, c in edges:
+            sf = _format_vertex(s, n)
+            df = _format_vertex(d, n)
             if c == 1:
-                edge_strs.append(f"{s}→{d}")
+                edge_strs.append(f"{sf}→{df}")
             else:
-                edge_strs.append(f"{s}→{d} (×{c})")
+                edge_strs.append(f"{sf}→{df} (×{c})")
         lines.append("Edges: " + ", ".join(edge_strs))
     else:
         lines.append("Edges: (none)")
@@ -86,7 +92,8 @@ def parse_action(text: str, n: int) -> int | None:
         text: Raw LLM output.
         n: Number of mutable vertices (valid range is 1..n).
     """
-    numbers = re.findall(r"\d+", text)
+    # Exclude digits that are part of frozen-vertex labels like "f1", "f2".
+    numbers = re.findall(r"(?<![a-zA-Z])\d+", text)
     for num_str in reversed(numbers):
         k = int(num_str)
         if 1 <= k <= n:

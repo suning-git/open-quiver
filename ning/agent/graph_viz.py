@@ -90,7 +90,7 @@ def render_graph(state: dict, mutated_vertex: int | None = None) -> str:
 
         net.add_node(
             fv,
-            label=f"{n + i}",
+            label=f"f{i}",
             x=x,
             y=y,
             color={"background": "#a0c4e8", "border": "#333333"},

@@ -31,10 +31,10 @@ class TestRenderState:
         assert "3(G)" in text
         assert "1→2" in text
         assert "2→3" in text
-        # Frozen edges should be excluded
-        assert "4" not in text
-        assert "5" not in text
-        assert "6" not in text
+        # Frozen edges are rendered as f1..fn
+        assert "1→f1" in text
+        assert "2→f2" in text
+        assert "3→f3" in text
 
     def test_partial_red(self):
         state = {
@@ -62,11 +62,25 @@ class TestRenderState:
         text = render_state(state)
         assert "×3" in text
 
-    def test_no_mutable_edges(self):
+    def test_only_frozen_edges(self):
         state = {
             "total_mutable": 2,
             "colors": {1: "green", 2: "green"},
             "edges": [(1, 3, 1), (2, 4, 1)],
+            "red_count": 0,
+            "step": 0,
+            "move_history": [],
+        }
+        text = render_state(state)
+        assert "1→f1" in text
+        assert "2→f2" in text
+        assert "(none)" not in text
+
+    def test_empty_edges(self):
+        state = {
+            "total_mutable": 2,
+            "colors": {1: "green", 2: "green"},
+            "edges": [],
             "red_count": 0,
             "step": 0,
             "move_history": [],
@@ -164,6 +178,12 @@ class TestParseAction:
     def test_fallback_past_out_of_range(self):
         """Last number out of range, but earlier number is valid."""
         assert parse_action("I'll mutate vertex 3, which has 12 neighbors", 5) == 3
+
+    def test_ignores_frozen_labels(self):
+        """Digits inside f1, f2... should not be parsed as actions."""
+        assert parse_action("I'll mutate 2 to break the f1 connection", 5) == 2
+        assert parse_action("Cut f3, then mutate 1", 5) == 1
+        assert parse_action("Just f2", 5) is None
 
     def test_zero(self):
         assert parse_action("0", 5) is None
