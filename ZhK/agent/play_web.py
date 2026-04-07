@@ -15,15 +15,15 @@ load_dotenv()
 import streamlit as st
 import streamlit.components.v1 as components
 
-from ning.agent.engine import QuiverEngine
-from ning.agent.catalog import list_graphs, get_graph
-from ning.agent.game_turn_runner import initialize_messages, run_turn
-from ning.agent.provider_registry import (
+from ZhK.agent.engine import QuiverEngine
+from ZhK.agent.catalog import list_graphs, get_graph
+from ZhK.agent.game_turn_runner import initialize_messages, run_turn
+from ZhK.agent.provider_registry import (
     create_provider,
     get_provider_config,
     list_provider_names,
 )
-from ning.agent.graph_viz import render_graph
+from ZhK.agent.graph_viz import render_graph
 
 # ── Page config ───────────────────────────────────────────────────
 

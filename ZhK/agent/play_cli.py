@@ -19,9 +19,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from ning.agent.game_session_runner import run_game_from_matrix
-from ning.agent.catalog import list_graphs, get_graph
-from ning.agent.provider_registry import (
+from ZhK.agent.game_session_runner import run_game_from_matrix
+from ZhK.agent.catalog import list_graphs, get_graph
+from ZhK.agent.provider_registry import (
     create_provider,
     get_provider_config,
     is_known_provider,
