@@ -1,5 +1,5 @@
 import random
-from typing import List, Set, Tuple
+from typing import List, Optional, Set, Tuple
 from .core import Arrow, ArrowCounts, IceQuiver
 
 
@@ -24,8 +24,8 @@ def random_quiver(
         n: int,
         *,
         rng: random.Random,
-        edge_probability: float | None,
-        edges: int | None,
+        edge_probability: Optional[float],
+        edges: Optional[int],
         allow_multi_arrows: bool,
         max_parallel: int,
     ) -> ArrowCounts:

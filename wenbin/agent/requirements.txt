@@ -1,0 +1,2 @@
+# Delegates to the repo root lockfile (same dependency set as ning/agent).
+-r ../../requirements.txt
