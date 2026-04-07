@@ -53,3 +53,6 @@ data/
 # Misc
 *.log
 .cache/
+
+# Agent
+ning/agent/game_history/

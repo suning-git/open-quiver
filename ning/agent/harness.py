@@ -5,23 +5,8 @@ Pure functions — no LLM calls, no state.
 
 import re
 
-SYSTEM_PROMPT = """\
-You are playing the green-red mutation game on a directed multigraph (quiver).
-
-## Rules
-- The graph has mutable vertices (1..n) and frozen vertices (1'..n').
-- Each mutable vertex is either GREEN or RED.
-- On each turn you choose one mutable vertex k to mutate (μ_k).
-- Mutation μ_k does three things:
-  1. For every 2-path i→k→j, add an edge i→j (multiplicity multiplies).
-  2. Reverse all edges touching k.
-  3. Cancel opposite edge pairs.
-- Your goal: make ALL mutable vertices RED.
-
-## Output format
-Reply with a single integer — the vertex number to mutate. Example: 3
-You may include brief reasoning before the number, but the last number in your response will be taken as your action.
-"""
+# Re-exported for backward compatibility. Source of truth: initial_prompts.py.
+from .initial_prompts import SYSTEM_PROMPT  # noqa: F401
 
 
 def render_state(state: dict) -> str:
