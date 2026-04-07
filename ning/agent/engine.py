@@ -173,6 +173,42 @@ class QuiverEngine:
             state["last_move"] = self._move_history[step - 1]
         return state
 
+    def get_trajectory_summary(self, k: int = 5) -> dict:
+        """Return red and edge-total trajectory over the last k+1 steps.
+
+        Derived on demand from self._history; no extra state is maintained.
+
+        Args:
+            k: Number of recent transitions to show (so k+1 data points).
+
+        Returns:
+            Dict with red_history, edge_total_history (each length min(k+1, total_steps+1)),
+            and best_red (over the entire history).
+        """
+        if self._B is None:
+            raise RuntimeError("Engine not initialized. Call reset() first.")
+
+        n_steps = len(self._move_history)
+        start = max(0, n_steps - k)
+        red_history = []
+        edge_total_history = []
+        for s in range(start, n_steps + 1):
+            B = self._history[s]
+            colors = get_colors(B)
+            red_history.append(sum(1 for c in colors.values() if c == "red"))
+            edge_total_history.append(sum(c for _, _, c in matrix_to_edges(B)))
+
+        best_red = max(
+            sum(1 for c in get_colors(B).values() if c == "red")
+            for B in self._history
+        )
+
+        return {
+            "red_history": red_history,
+            "edge_total_history": edge_total_history,
+            "best_red": best_red,
+        }
+
     def is_won(self) -> bool:
         """Check if the game is won (all vertices red)."""
         if self._B is None:

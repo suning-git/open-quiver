@@ -12,6 +12,7 @@ from .harness import (
     format_error,
     parse_action,
     render_diff,
+    render_trajectory,
 )
 from .initial_prompts import get_system_prompt
 from .llm_provider import LLMProvider
@@ -26,12 +27,24 @@ class TurnResult:
     diff_text: str = ""
 
 
-def initialize_messages(engine: QuiverEngine) -> list[dict]:
-    """Build initial conversation messages from current engine state."""
+def initialize_messages(
+    engine: QuiverEngine,
+    prompt_version: str | None = None,
+) -> list[dict]:
+    """Build initial conversation messages from current engine state.
+
+    Args:
+        engine: Initialized engine.
+        prompt_version: Prompt registry key, or None to use the registry default.
+    """
     state = engine.get_state()
+    trajectory_text = render_trajectory(engine.get_trajectory_summary())
+    system_content = (
+        get_system_prompt(prompt_version) if prompt_version else get_system_prompt()
+    )
     return [
-        {"role": "system", "content": get_system_prompt()},
-        {"role": "user", "content": build_user_message(state)},
+        {"role": "system", "content": system_content},
+        {"role": "user", "content": build_user_message(state, trajectory_text=trajectory_text)},
     ]
 
 
@@ -73,6 +86,7 @@ def run_turn(
         messages.append({"role": "user", "content": diff_text})
         return TurnResult(game_over=True, reason="won", diff_text=diff_text)
 
-    user_msg = build_user_message(state, diff_text=diff_text)
+    trajectory_text = render_trajectory(engine.get_trajectory_summary())
+    user_msg = build_user_message(state, diff_text=diff_text, trajectory_text=trajectory_text)
     messages.append({"role": "user", "content": user_msg})
     return TurnResult(game_over=False, reason="", diff_text=diff_text)

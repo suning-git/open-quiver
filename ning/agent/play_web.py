@@ -18,6 +18,7 @@ import streamlit.components.v1 as components
 from ning.agent.engine import QuiverEngine
 from ning.agent.catalog import list_graphs, get_graph
 from ning.agent.game_turn_runner import initialize_messages, run_turn
+from ning.agent.initial_prompts import DEFAULT_PROMPT_KEY, list_prompt_versions
 from ning.agent.provider_registry import (
     create_provider,
     get_provider_config,
@@ -53,6 +54,7 @@ def init_session():
         st.session_state.graph_name = ""
         st.session_state.last_export_path = ""
         st.session_state.loaded_from = ""
+        st.session_state.prompt_version = DEFAULT_PROMPT_KEY
 
 
 init_session()
@@ -63,13 +65,13 @@ def clamp_view_step(view_step: int, total_steps: int) -> int:
     return max(0, min(view_step, total_steps))
 
 
-def start_game(graph_label: str, provider_name: str):
+def start_game(graph_label: str, provider_name: str, prompt_version: str):
     """Initialize a new game."""
     graph_name = GRAPH_OPTIONS[graph_label]
     graph_data = get_graph(graph_name)
     engine = QuiverEngine()
     engine.reset_from_matrix(graph_data["B_A"])
-    messages = initialize_messages(engine)
+    messages = initialize_messages(engine, prompt_version=prompt_version)
 
     st.session_state.engine = engine
     st.session_state.messages = messages
@@ -79,6 +81,7 @@ def start_game(graph_label: str, provider_name: str):
     st.session_state.view_step = 0
     st.session_state.provider_name = provider_name
     st.session_state.graph_name = graph_name
+    st.session_state.prompt_version = prompt_version
     st.session_state.last_export_path = ""
     st.session_state.loaded_from = ""
 
@@ -110,6 +113,7 @@ def load_game(filename: str) -> str | None:
     st.session_state.view_step = engine.total_steps
     st.session_state.provider_name = payload.get("provider", "")
     st.session_state.graph_name = graph_name
+    st.session_state.prompt_version = payload.get("prompt_version", "(unknown)")
     st.session_state.last_export_path = ""
     st.session_state.loaded_from = filename
     return None
@@ -131,6 +135,7 @@ def export_chat_history() -> str:
         "exported_at": datetime.now().isoformat(timespec="seconds"),
         "graph": graph_name,
         "provider": provider_name,
+        "prompt_version": st.session_state.get("prompt_version", ""),
         "won": engine.is_won(),
         "game_over": st.session_state.game_over,
         "step": state["step"],
@@ -198,6 +203,10 @@ with st.sidebar:
         total_steps = engine.total_steps
         current_state = engine.get_state()
 
+        prov = st.session_state.get("provider_name", "?")
+        pver = st.session_state.get("prompt_version", "?")
+        st.caption(f"{prov} · {pver}")
+
         if is_loaded:
             st.caption(f"📂 {st.session_state.loaded_from}")
 
@@ -243,10 +252,20 @@ with st.sidebar:
     with st.expander("🎮 New Game", expanded=not st.session_state.game_started):
         provider_name = st.selectbox("LLM Provider", list_provider_names())
         graph_label = st.selectbox("Graph", list(GRAPH_OPTIONS.keys()))
+        prompt_versions = list_prompt_versions()
+        saved_pv = st.session_state.get("prompt_version", DEFAULT_PROMPT_KEY)
+        if saved_pv not in prompt_versions:
+            saved_pv = DEFAULT_PROMPT_KEY
+        prompt_default_idx = prompt_versions.index(saved_pv)
+        prompt_version = st.selectbox(
+            "Prompt version",
+            prompt_versions,
+            index=prompt_default_idx,
+        )
         if st.session_state.game_started and not is_loaded:
             st.caption("⚠ Will discard the current game")
         if st.button("Start New Game", use_container_width=True):
-            start_game(graph_label, provider_name)
+            start_game(graph_label, provider_name, prompt_version)
             st.rerun()
 
     with st.expander("📂 Load Saved", expanded=False):

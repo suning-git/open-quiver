@@ -4,6 +4,7 @@ from ning.agent.harness import (
     SYSTEM_PROMPT,
     render_state,
     render_diff,
+    render_trajectory,
     parse_action,
     format_error,
     build_user_message,
@@ -156,6 +157,44 @@ class TestRenderDiff:
         assert "red → green" not in text
 
 
+# ── render_trajectory ─────────────────────────────────────────────
+
+
+class TestRenderTrajectory:
+    def test_basic(self):
+        summary = {
+            "red_history": [9, 10, 9, 10, 11, 12],
+            "edge_total_history": [54, 66, 78, 92, 113, 92],
+            "best_red": 12,
+        }
+        text = render_trajectory(summary)
+        assert "Recent trajectory" in text
+        assert "last 5 mutations" in text
+        assert "9 → 10 → 9 → 10 → 11 → 12" in text
+        assert "54 → 66 → 78 → 92 → 113 → 92" in text
+        assert "Best red:   12" in text
+
+    def test_short_history(self):
+        """Two data points = one transition: still rendered."""
+        summary = {
+            "red_history": [0, 1],
+            "edge_total_history": [33, 35],
+            "best_red": 1,
+        }
+        text = render_trajectory(summary)
+        assert "last 1 mutations" in text
+        assert "0 → 1" in text
+
+    def test_single_point_returns_empty(self):
+        """At step 0 (no mutations) trajectory has nothing meaningful."""
+        summary = {
+            "red_history": [0],
+            "edge_total_history": [33],
+            "best_red": 0,
+        }
+        assert render_trajectory(summary) == ""
+
+
 # ── parse_action ──────────────────────────────────────────────────
 
 
@@ -238,6 +277,33 @@ class TestBuildUserMessage:
         assert "Mutated vertex 1" in msg
         assert "Step 1" in msg
         assert "Your move?" in msg
+
+    def test_with_trajectory(self):
+        state = {
+            "total_mutable": 2,
+            "colors": {1: "red", 2: "green"},
+            "edges": [(2, 1, 1)],
+            "red_count": 1,
+            "step": 1,
+            "move_history": [1],
+        }
+        traj = "Recent trajectory (last 1 mutations):\n  Red:        0 → 1"
+        msg = build_user_message(state, diff_text="diff", trajectory_text=traj)
+        assert "Recent trajectory" in msg
+        # Trajectory should appear before "Your move?"
+        assert msg.index("Recent trajectory") < msg.index("Your move?")
+
+    def test_empty_trajectory_omitted(self):
+        state = {
+            "total_mutable": 2,
+            "colors": {1: "green", 2: "green"},
+            "edges": [],
+            "red_count": 0,
+            "step": 0,
+            "move_history": [],
+        }
+        msg = build_user_message(state, trajectory_text="")
+        assert "Recent trajectory" not in msg
 
 
 # ── system prompt ─────────────────────────────────────────────────

@@ -137,8 +137,8 @@ class TestCatalog:
         graphs = catalog.list_graphs()
         assert len(graphs) >= 11  # 4 presets + 7 test1
         names = [g["name"] for g in graphs]
-        assert "linear_2" in names
-        assert "test1_03_n6" in names
+        assert "linear_1t2" in names
+        assert "triangle_inside_triangle_equiv_to_D6 (test1_03)" in names
 
     def test_list_sorted_by_n(self):
         graphs = catalog.list_graphs()
@@ -146,25 +146,25 @@ class TestCatalog:
         assert ns == sorted(ns)
 
     def test_get_graph(self):
-        g = catalog.get_graph("linear_3")
+        g = catalog.get_graph("linear_1t2t3")
         assert g["n"] == 3
         assert g["B_A"].shape == (3, 3)
         # Antisymmetric
         np.testing.assert_array_equal(g["B_A"], -g["B_A"].T)
 
     def test_get_graph_test1(self):
-        g = catalog.get_graph("test1_07_n4")
+        g = catalog.get_graph("4_loop (test1_07)")
         assert g["n"] == 4
         assert g["B_A"].shape == (4, 4)
 
     def test_get_solution(self):
-        sol = catalog.get_solution("test1_03_n6")
+        sol = catalog.get_solution("triangle_inside_triangle_equiv_to_D6 (test1_03)")
         assert sol is not None
         assert isinstance(sol, list)
         assert len(sol) == 10
 
     def test_no_solution_for_preset(self):
-        sol = catalog.get_solution("linear_2")
+        sol = catalog.get_solution("linear_1t2")
         assert sol is None
 
     def test_get_graph_not_found(self):

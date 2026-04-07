@@ -114,18 +114,52 @@ def format_error(text: str, n: int) -> str:
     )
 
 
-def build_user_message(state: dict, diff_text: str | None = None) -> str:
+def render_trajectory(summary: dict) -> str:
+    """Render a trajectory summary as text for the LLM.
+
+    Returns an empty string if there are fewer than 2 data points
+    (nothing meaningful to show before any mutation has happened).
+
+    Args:
+        summary: Dict from engine.get_trajectory_summary().
+    """
+    red = summary["red_history"]
+    edges = summary["edge_total_history"]
+    if len(red) < 2:
+        return ""
+
+    n_transitions = len(red) - 1
+    red_str = " → ".join(str(r) for r in red)
+    edge_str = " → ".join(str(e) for e in edges)
+    lines = [
+        f"Recent trajectory (last {n_transitions} mutations):",
+        f"  Red:        {red_str}",
+        f"  Edge total: {edge_str}",
+        f"  Best red:   {summary['best_red']}",
+    ]
+    return "\n".join(lines)
+
+
+def build_user_message(
+    state: dict,
+    diff_text: str | None = None,
+    trajectory_text: str | None = None,
+) -> str:
     """Assemble the user message for one turn.
 
     Args:
         state: Current engine state dict.
         diff_text: Output of render_diff() from the previous move, or None for the first turn.
+        trajectory_text: Output of render_trajectory(), or None/empty to omit.
     """
     parts = []
     if diff_text is not None:
         parts.append(diff_text)
         parts.append("")
     parts.append(render_state(state))
+    if trajectory_text:
+        parts.append("")
+        parts.append(trajectory_text)
     parts.append("")
     parts.append("Your move?")
     return "\n".join(parts)

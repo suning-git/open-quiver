@@ -105,8 +105,8 @@ class TestRunGameFromMatrix:
         """run_game_from_matrix works with a catalog graph."""
         from ning.agent import catalog
 
-        g = catalog.get_graph("test1_06_n3")
-        sol = catalog.get_solution("test1_06_n3")
+        g = catalog.get_graph("linear_1t2f3 (test1_06)")
+        sol = catalog.get_solution("linear_1t2f3 (test1_06)")
         provider = MockProvider.from_actions(sol)
         result = run_game_from_matrix(g["B_A"], provider)
         assert result.won
