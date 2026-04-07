@@ -189,83 +189,90 @@ def step_game():
 # ── Sidebar: Controls ─────────────────────────────────────────────
 
 with st.sidebar:
-    st.header("Game Controls")
-
-    provider_name = st.selectbox("LLM Provider", list_provider_names())
-    graph_label = st.selectbox("Graph", list(GRAPH_OPTIONS.keys()))
-
-    if st.button("Start New Game", use_container_width=True):
-        start_game(graph_label, provider_name)
-        st.rerun()
-
-    st.divider()
-    st.subheader("Load saved game")
-    if GAME_HISTORY_DIR.exists():
-        saved_files = sorted(
-            (p.name for p in GAME_HISTORY_DIR.glob("*.json")),
-            reverse=True,
-        )
-    else:
-        saved_files = []
-    if saved_files:
-        selected_file = st.selectbox(
-            "History file",
-            saved_files,
-            label_visibility="collapsed",
-        )
-        if st.session_state.game_started and not st.session_state.get("loaded_from"):
-            st.caption("⚠ Loading will discard the current game")
-        if st.button("Load", use_container_width=True):
-            err = load_game(selected_file)
-            if err:
-                st.error(err)
-            else:
-                st.rerun()
-    else:
-        st.caption("(no saved games)")
-
     is_loaded = bool(st.session_state.get("loaded_from"))
-    if (
-        st.session_state.game_started
-        and not st.session_state.game_over
-        and not is_loaded
-    ):
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Step", use_container_width=True):
-                st.session_state.auto_playing = False
-                step_game()
-                st.rerun()
-        with col2:
-            if st.session_state.auto_playing:
-                if st.button("Stop", use_container_width=True):
-                    st.session_state.auto_playing = False
-                    st.rerun()
-            else:
-                if st.button("Auto-play", use_container_width=True):
-                    st.session_state.auto_playing = True
-                    st.rerun()
 
+    # ── Current Game (high-frequency controls, top) ──────────
     if st.session_state.game_started:
+        st.header("Current Game")
         engine = st.session_state.engine
         total_steps = engine.total_steps
         current_state = engine.get_state()
-        st.divider()
-        st.subheader("Status")
+
+        if is_loaded:
+            st.caption(f"📂 {st.session_state.loaded_from}")
+
         if engine.is_won():
             st.success(f"WON in {total_steps} steps!")
         elif st.session_state.game_over:
             st.error("Game over (parse failure)")
+
         st.metric("Red", f"{current_state['red_count']}/{current_state['total_mutable']}")
         if current_state["move_history"]:
             moves_str = " -> ".join(f"u{k}" for k in current_state["move_history"])
             st.text(f"Moves: {moves_str}")
+
+        if not st.session_state.game_over and not is_loaded:
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Step", use_container_width=True):
+                    st.session_state.auto_playing = False
+                    step_game()
+                    st.rerun()
+            with col2:
+                if st.session_state.auto_playing:
+                    if st.button("Stop", use_container_width=True):
+                        st.session_state.auto_playing = False
+                        st.rerun()
+                else:
+                    if st.button("Auto-play", use_container_width=True):
+                        st.session_state.auto_playing = True
+                        st.rerun()
+
         if not is_loaded:
             if st.button("Export Chat History", use_container_width=True):
                 st.session_state.last_export_path = export_chat_history()
                 st.rerun()
             if st.session_state.last_export_path:
                 st.caption(f"Saved: {st.session_state.last_export_path}")
+
+        st.divider()
+
+    # ── Setup (low-frequency, bottom, collapsible) ───────────
+    st.header("Setup")
+
+    with st.expander("🎮 New Game", expanded=not st.session_state.game_started):
+        provider_name = st.selectbox("LLM Provider", list_provider_names())
+        graph_label = st.selectbox("Graph", list(GRAPH_OPTIONS.keys()))
+        if st.session_state.game_started and not is_loaded:
+            st.caption("⚠ Will discard the current game")
+        if st.button("Start New Game", use_container_width=True):
+            start_game(graph_label, provider_name)
+            st.rerun()
+
+    with st.expander("📂 Load Saved", expanded=False):
+        if GAME_HISTORY_DIR.exists():
+            saved_files = sorted(
+                (p.name for p in GAME_HISTORY_DIR.glob("*.json")),
+                reverse=True,
+            )
+        else:
+            saved_files = []
+        if saved_files:
+            selected_file = st.selectbox(
+                "History file",
+                saved_files,
+                label_visibility="collapsed",
+            )
+            if st.session_state.game_started and not is_loaded:
+                st.caption("⚠ Will discard the current game")
+            if st.button("Load", use_container_width=True):
+                err = load_game(selected_file)
+                if err:
+                    st.error(err)
+                else:
+                    st.rerun()
+        else:
+            st.caption("(no saved games)")
 
 # ── Main area ─────────────────────────────────────────────────────
 
