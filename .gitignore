@@ -24,6 +24,7 @@ env/
 
 # Claude Code
 .claude/
+CLAUDE.md
 
 # Jupyter
 .ipynb_checkpoints/

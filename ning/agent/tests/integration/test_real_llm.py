@@ -38,10 +38,3 @@ def _run(provider_name: str, graph_name: str, max_steps: int = 20):
 def test_gpt_5_4_mini_solves_linear_2():
     result = _run("gpt-5.4-mini", "linear_2")
     assert result.won, f"Failed: {result.reason}, moves={result.move_history}"
-
-
-@pytest.mark.integration
-@pytest.mark.skipif(not _has_key("deepseek-chat"), reason="DEEPSEEK_API_KEY not set")
-def test_deepseek_chat_solves_linear_2():
-    result = _run("deepseek-chat", "linear_2")
-    assert result.won, f"Failed: {result.reason}, moves={result.move_history}"

@@ -1,6 +1,6 @@
 # 图变换规则的矩阵表达
 
-本文档是 [graph_rule.md](graph_rule.md) 的矩阵版本，将图结构、约束、变换操作和绿红游戏全部翻译为矩阵语言。
+本文档是图论规则（参见 [`ning/graph_rule.md`](../../ning/graph_rule.md)）的矩阵版本，将图结构、约束、变换操作和绿红游戏全部翻译为矩阵语言。它是 [`mutation.py`](mutation.py) 的形式化规范。
 
 ---
 
