@@ -56,5 +56,4 @@ data/
 .cache/
 
 # Agent
-ning/agent/game_history/
 ZhK/agent/game_history/
