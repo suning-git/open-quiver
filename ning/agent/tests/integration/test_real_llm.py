@@ -35,6 +35,6 @@ def _run(provider_name: str, graph_name: str, max_steps: int = 20):
 
 @pytest.mark.integration
 @pytest.mark.skipif(not _has_key("gpt-5.4-mini"), reason="OPENAI_API_KEY not set")
-def test_gpt_5_4_mini_solves_linear_2():
-    result = _run("gpt-5.4-mini", "linear_2")
+def test_gpt_5_4_mini_solves_linear_1t2():
+    result = _run("gpt-5.4-mini", "linear_1t2")
     assert result.won, f"Failed: {result.reason}, moves={result.move_history}"
