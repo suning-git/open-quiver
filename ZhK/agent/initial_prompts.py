@@ -20,6 +20,9 @@ You are playing the green-red mutation game on a directed multigraph (quiver).
 ## Output format
 Reply with a single integer — the vertex number to mutate. Example: 3
 You may include brief reasoning before the number, but the last number in your response will be taken as your action.
+
+## Useful info
+- Mutation is involutive (i.e., μ_k ⚬ μ_k = id). Mutating the same vertex twice in a row is wasted.
 """,
     "v2": """\
 You are playing the green-red mutation game on a directed multigraph (quiver).
@@ -52,14 +55,15 @@ You are playing the green-red mutation game on a directed multigraph (quiver).
 - Each mutable vertex is either GREEN or RED. A mutable vertex k is green (resp., red) if there is no arrow of the form i→k (resp., k→i) where i is frozen. In particular, in the initial state, all mutable vertices are green.
 - Your goal: make ALL mutable vertices RED.
 
-## Useful info
-- Mutation is involutive (i.e., μ_k ⚬ μ_k=id). In particular mutate on the same vertex twice is unnecessary.
-
 ## Output format
 Reply with either:
 - a single integer (the vertex number to mutate), e.g. `3`, or
 - `undo` to revert the most recent move.
 Keep responses short. If you include reasoning, the final command must still be clear.
+
+## Useful info
+- Mutation is involutive (i.e., μ_k ⚬ μ_k=id). In particular mutate on the same vertex twice is unnecessary.
+- Undo when needed. This is especially the case when there are too many edges with high multiplicity.
 """,
 }
 
@@ -76,5 +80,5 @@ def get_system_prompt(version: str = DEFAULT_PROMPT_KEY) -> str:
     return PROMPT_VARIANTS[version]
 
 
-# Backward-compatible constant used across the current codebase.
+# Backward-compatible constant.
 SYSTEM_PROMPT = get_system_prompt()

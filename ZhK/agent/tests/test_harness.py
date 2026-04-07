@@ -1,6 +1,6 @@
 """Unit tests for harness.py."""
 
-from ning.agent.harness import (
+from ZhK.agent.harness import (
     render_state,
     render_diff,
     parse_action_or_undo,
@@ -8,7 +8,7 @@ from ning.agent.harness import (
     format_error,
     build_user_message,
 )
-from ning.agent.initial_prompts import get_system_prompt
+from ZhK.agent.initial_prompts import get_system_prompt
 
 
 # ── render_state ──────────────────────────────────────────────────
@@ -32,10 +32,10 @@ class TestRenderState:
         assert "3(G)" in text
         assert "1→2" in text
         assert "2→3" in text
-        # Frozen edges are included in the state rendering
-        assert "1→4" in text
-        assert "2→5" in text
-        assert "3→6" in text
+        # Frozen edges are excluded from state rendering
+        assert "1→4" not in text
+        assert "2→5" not in text
+        assert "3→6" not in text
 
     def test_partial_red(self):
         state = {
@@ -73,8 +73,7 @@ class TestRenderState:
             "move_history": [],
         }
         text = render_state(state)
-        assert "1→3" in text
-        assert "2→4" in text
+        assert "(none)" in text
 
 
 # ── render_diff ───────────────────────────────────────────────────

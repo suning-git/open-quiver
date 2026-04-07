@@ -5,6 +5,9 @@ Pure functions — no LLM calls, no state.
 
 import re
 
+# Re-exported for backward compatibility. Source of truth: initial_prompts.py.
+from .initial_prompts import SYSTEM_PROMPT  # noqa: F401
+
 
 def render_state(state: dict) -> str:
     """Render engine state as text for the LLM.
@@ -128,9 +131,11 @@ def parse_action(text: str, n: int) -> int | None:
         text: Raw LLM output.
         n: Number of mutable vertices (valid range is 1..n).
     """
-    command = parse_action_or_undo(text, n)
-    if isinstance(command, int):
-        return command
+    numbers = re.findall(r"\d+", text)
+    for num_str in reversed(numbers):
+        k = int(num_str)
+        if 1 <= k <= n:
+            return k
     return None
 
 

@@ -1,8 +1,8 @@
 """Tests for the agent game loop using MockProvider."""
 
-from ning.agent.game_session_runner import run_game, run_game_from_matrix
-from ning.agent.mutation import make_exchange_matrix
-from ning.agent.llm_provider import MockProvider
+from ZhK.agent.game_session_runner import run_game, run_game_from_matrix
+from common.quiver.mutation import make_exchange_matrix
+from ZhK.agent.llm_provider import MockProvider
 
 
 class TestRunGameWin:

@@ -1,12 +1,12 @@
 """Unit tests for mutation.py, engine.py, and catalog.py.
 
-Test cases are drawn from ning/graph_rule.md and ning/graph_matrix_rule.md.
+Test cases are drawn from ZhK/graph_rule.md and ZhK/graph_matrix_rule.md.
 """
 
 import numpy as np
 import pytest
 
-from ning.agent.mutation import (
+from common.quiver.mutation import (
     make_exchange_matrix,
     make_framed,
     make_coframed,
@@ -15,8 +15,8 @@ from ning.agent.mutation import (
     is_all_red,
     matrix_to_edges,
 )
-from ning.agent.engine import QuiverEngine
-from ning.agent import catalog
+from ZhK.agent.engine import QuiverEngine
+from ZhK.agent import catalog
 
 
 # ── mutation.py tests ──────────────────────────────────────────────

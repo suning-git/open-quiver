@@ -1,4 +1,4 @@
-"""Main game loop: connects engine, harness, and LLM provider."""
+"""Session-level game loop: drives run_turn until the game ends."""
 
 from dataclasses import dataclass, field
 
@@ -28,18 +28,7 @@ def run_game(
     max_steps: int = 50,
     max_retries: int = 3,
 ) -> GameResult:
-    """Run one complete game from an edge list.
-
-    Args:
-        n: Number of mutable vertices.
-        edges: Edge list for graph A.
-        provider: LLM provider to use.
-        max_steps: Maximum mutation steps before giving up.
-        max_retries: Max consecutive parse failures per turn.
-
-    Returns:
-        GameResult with outcome, history, and full message log.
-    """
+    """Run one complete game from an edge list."""
     engine = QuiverEngine()
     engine.reset(n, edges)
     return _run_game_loop(engine, provider, max_steps, max_retries)
@@ -51,17 +40,7 @@ def run_game_from_matrix(
     max_steps: int = 50,
     max_retries: int = 3,
 ) -> GameResult:
-    """Run one complete game from an exchange matrix.
-
-    Args:
-        B_A: n×n antisymmetric exchange matrix.
-        provider: LLM provider to use.
-        max_steps: Maximum mutation steps before giving up.
-        max_retries: Max consecutive parse failures per turn.
-
-    Returns:
-        GameResult with outcome, history, and full message log.
-    """
+    """Run one complete game from an n×n exchange matrix."""
     engine = QuiverEngine()
     engine.reset_from_matrix(B_A)
     return _run_game_loop(engine, provider, max_steps, max_retries)
@@ -74,10 +53,9 @@ def _run_game_loop(
     max_retries: int,
 ) -> GameResult:
     """Internal: run the LLM game loop on an already-initialized engine."""
-    state = engine.get_state()
     messages = initialize_messages(engine)
 
-    while not engine.is_won() and state["step"] < max_steps:
+    while not engine.is_won() and engine.total_steps < max_steps:
         turn = run_turn(engine, messages, provider, max_retries=max_retries)
 
         if turn.reason == "parse_failure":
@@ -91,14 +69,9 @@ def _run_game_loop(
             )
         if turn.reason == "won":
             break
-        state = engine.get_state()
 
     state = engine.get_state()
-
-    if engine.is_won():
-        reason = "won"
-    else:
-        reason = "max_steps"
+    reason = "won" if engine.is_won() else "max_steps"
 
     return GameResult(
         won=engine.is_won(),

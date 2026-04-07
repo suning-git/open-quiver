@@ -115,7 +115,7 @@ def export_chat_history() -> str:
 
 def get_provider():
     """Create provider from current selection."""
-    name = st.session_state.get("provider_name", "deepseek")
+    name = st.session_state.get("provider_name", "deepseek-chat")
     try:
         return create_provider(name)
     except RuntimeError:

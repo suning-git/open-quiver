@@ -1,12 +1,12 @@
 """Stateful game engine for the green-red mutation game.
 
-Wraps the pure functions in mutation.py with state management,
-history tracking, and cycle detection.
+Wraps the pure functions in common.quiver.mutation with state
+management, history tracking, and cycle detection.
 """
 
 import numpy as np
 
-from .mutation import (
+from common.quiver.mutation import (
     Matrix,
     make_exchange_matrix,
     make_framed,
