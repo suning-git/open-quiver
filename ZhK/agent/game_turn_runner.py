@@ -6,6 +6,7 @@ from .engine import QuiverEngine
 from .harness import (
     build_user_message,
     format_error,
+    parse_action,
     parse_action_or_undo,
     render_diff,
 )
@@ -20,6 +21,10 @@ class TurnResult:
     game_over: bool
     reason: str = ""  # "won", "parse_failure", ""
     diff_text: str = ""
+
+
+# Keep undo implementation available, but disable it for now.
+ALLOW_UNDO = False
 
 
 def initialize_messages(engine: QuiverEngine) -> list[dict]:
@@ -50,7 +55,7 @@ def run_turn(
     response = provider.chat(messages)
     messages.append({"role": "assistant", "content": response})
 
-    command = parse_action_or_undo(response, n)
+    command = parse_action_or_undo(response, n) if ALLOW_UNDO else parse_action(response, n)
     retries = 0
     state = None
 
@@ -59,7 +64,7 @@ def run_turn(
             state = engine.mutate(command)
             break
 
-        if command == "undo":
+        if ALLOW_UNDO and command == "undo":
             try:
                 state = engine.undo()
                 break
@@ -69,7 +74,7 @@ def run_turn(
                     f"Reply with an integer between 1 and {n}, or 'undo'."
                 )
         else:
-            error_msg = format_error(response, n, allow_undo=True)
+            error_msg = format_error(response, n, allow_undo=ALLOW_UNDO)
 
         if retries >= max_retries:
             return TurnResult(game_over=True, reason="parse_failure")
@@ -77,7 +82,7 @@ def run_turn(
         messages.append({"role": "user", "content": error_msg})
         response = provider.chat(messages)
         messages.append({"role": "assistant", "content": response})
-        command = parse_action_or_undo(response, n)
+        command = parse_action_or_undo(response, n) if ALLOW_UNDO else parse_action(response, n)
         retries += 1
 
     diff_text = render_diff(state)

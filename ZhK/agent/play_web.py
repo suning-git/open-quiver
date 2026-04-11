@@ -34,7 +34,7 @@ st.set_page_config(
 
 # ── Graph catalog ────────────────────────────────────────────────
 
-GRAPH_LIST = list_graphs()  # [{"name": ..., "n": ...}, ...]
+GRAPH_LIST = list_graphs()
 GRAPH_OPTIONS = {f"{g['name']} (n={g['n']})": g["name"] for g in GRAPH_LIST}
 GAME_HISTORY_DIR = Path(__file__).parent / "game_history"
 
@@ -51,6 +51,7 @@ def init_session():
         st.session_state.view_step = 0
         st.session_state.graph_name = ""
         st.session_state.last_export_path = ""
+        st.session_state.loaded_from = ""
 
 
 init_session()
@@ -78,6 +79,39 @@ def start_game(graph_label: str, provider_name: str):
     st.session_state.provider_name = provider_name
     st.session_state.graph_name = graph_name
     st.session_state.last_export_path = ""
+    st.session_state.loaded_from = ""
+
+
+def load_game(filename: str) -> str | None:
+    """Load a saved game JSON and replay it.
+
+    Returns None on success, or an error message on failure.
+    On failure, session_state is left untouched.
+    """
+    try:
+        path = GAME_HISTORY_DIR / filename
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        graph_name = payload["graph"]
+        graph_data = get_graph(graph_name)
+        engine = QuiverEngine()
+        engine.reset_from_matrix(graph_data["B_A"])
+        for k in payload["move_history"]:
+            engine.mutate(k)
+    except Exception as e:
+        return f"Failed to load {filename}: {e}"
+
+    # All computation succeeded 鈥?now commit to session_state.
+    st.session_state.engine = engine
+    st.session_state.messages = payload.get("messages", [])
+    st.session_state.game_started = True
+    st.session_state.game_over = bool(payload.get("game_over", False))
+    st.session_state.auto_playing = False
+    st.session_state.view_step = engine.total_steps
+    st.session_state.provider_name = payload.get("provider", "")
+    st.session_state.graph_name = graph_name
+    st.session_state.last_export_path = ""
+    st.session_state.loaded_from = filename
+    return None
 
 
 def export_chat_history() -> str:
@@ -102,7 +136,6 @@ def export_chat_history() -> str:
         "red_count": state["red_count"],
         "total_mutable": state["total_mutable"],
         "move_history": state["move_history"],
-        "action_history": state.get("action_history", []),
         "messages": st.session_state.messages,
     }
 
@@ -144,7 +177,6 @@ def step_game():
     was_at_frontier = st.session_state.view_step == engine.total_steps
     turn = run_turn(engine, messages, provider, max_retries=3)
 
-    # Auto-advance view if user was watching the latest step
     if was_at_frontier and turn.reason != "parse_failure":
         st.session_state.view_step = engine.total_steps
 
@@ -155,66 +187,99 @@ def step_game():
 # ── Sidebar: Controls ─────────────────────────────────────────────
 
 with st.sidebar:
-    st.header("Game Controls")
+    is_loaded = bool(st.session_state.get("loaded_from"))
 
-    provider_name = st.selectbox("LLM Provider", list_provider_names())
-    graph_label = st.selectbox("Graph", list(GRAPH_OPTIONS.keys()))
-
-    if st.button("Start New Game", use_container_width=True):
-        start_game(graph_label, provider_name)
-        st.rerun()
-
-    if st.session_state.game_started and not st.session_state.game_over:
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Step", use_container_width=True):
-                st.session_state.auto_playing = False
-                step_game()
-                st.rerun()
-        with col2:
-            if st.session_state.auto_playing:
-                if st.button("Stop", use_container_width=True):
-                    st.session_state.auto_playing = False
-                    st.rerun()
-            else:
-                if st.button("Auto-play", use_container_width=True):
-                    st.session_state.auto_playing = True
-                    st.rerun()
-
+    # ── Current Game (high-frequency controls, top) ─────────────────────
     if st.session_state.game_started:
+        st.header("Current Game")
         engine = st.session_state.engine
         total_steps = engine.total_steps
         current_state = engine.get_state()
-        st.divider()
-        st.subheader("Status")
+
+        if is_loaded:
+            st.caption(f"{st.session_state.loaded_from}")
+
         if engine.is_won():
             st.success(f"WON in {total_steps} steps!")
         elif st.session_state.game_over:
             st.error("Game over (parse failure)")
+
         st.metric("Red", f"{current_state['red_count']}/{current_state['total_mutable']}")
         if current_state["move_history"]:
             moves_str = " -> ".join(f"u{k}" for k in current_state["move_history"])
             st.text(f"Moves: {moves_str}")
-        if current_state.get("action_history"):
-            action_parts = []
-            for action in current_state["action_history"]:
-                if action["type"] == "mutate":
-                    action_parts.append(f"u{action['vertex']}")
-                else:
-                    action_parts.append(f"undo({action['vertex']})")
-            st.text("Actions: " + " -> ".join(action_parts))
-        if st.button("Export Chat History", use_container_width=True):
-            st.session_state.last_export_path = export_chat_history()
-            st.rerun()
-        if st.session_state.last_export_path:
-            st.caption(f"Saved: {st.session_state.last_export_path}")
 
-# ── Main area ─────────────────────────────────────────────────────
+        if not st.session_state.game_over and not is_loaded:
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Step", use_container_width=True):
+                    st.session_state.auto_playing = False
+                    step_game()
+                    st.rerun()
+            with col2:
+                if st.session_state.auto_playing:
+                    if st.button("Stop", use_container_width=True):
+                        st.session_state.auto_playing = False
+                        st.rerun()
+                else:
+                    if st.button("Auto-play", use_container_width=True):
+                        st.session_state.auto_playing = True
+                        st.rerun()
+
+        if not is_loaded:
+            if st.button("Export Chat History", use_container_width=True):
+                st.session_state.last_export_path = export_chat_history()
+                st.rerun()
+            if st.session_state.last_export_path:
+                st.caption(f"Saved: {st.session_state.last_export_path}")
+
+        st.divider()
+
+    # ── Setup (low-frequency, bottom, collapsible) ─────────────────────
+    st.header("Setup")
+
+    with st.expander("New Game", expanded=not st.session_state.game_started):
+        provider_name = st.selectbox("LLM Provider", list_provider_names())
+        graph_label = st.selectbox("Graph", list(GRAPH_OPTIONS.keys()))
+        if st.session_state.game_started and not is_loaded:
+            st.caption("Will discard the current game")
+        if st.button("Start New Game", use_container_width=True):
+            start_game(graph_label, provider_name)
+            st.rerun()
+
+    with st.expander("Load Saved", expanded=False):
+        if GAME_HISTORY_DIR.exists():
+            saved_files = sorted(
+                (p.name for p in GAME_HISTORY_DIR.glob("*.json")),
+                reverse=True,
+            )
+        else:
+            saved_files = []
+        if saved_files:
+            selected_file = st.selectbox(
+                "History file",
+                saved_files,
+                label_visibility="collapsed",
+            )
+            if st.session_state.game_started and not is_loaded:
+                st.caption("Will discard the current game")
+            if st.button("Load", use_container_width=True):
+                err = load_game(selected_file)
+                if err:
+                    st.error(err)
+                else:
+                    st.rerun()
+        else:
+            st.caption("(no saved games)")
+
+# ── Main area ───────────────────────────────────────────────────────────────
 
 if not st.session_state.game_started:
     st.title("Green-Red Mutation Game")
     st.write("Select a graph and LLM provider from the sidebar, then click **Start New Game**.")
 else:
+    if st.session_state.get("loaded_from"):
+        st.info(f"Loaded: {st.session_state.loaded_from} (read-only replay)")
     engine = st.session_state.engine
     total_steps = engine.total_steps
     view_step = clamp_view_step(st.session_state.view_step, total_steps)
