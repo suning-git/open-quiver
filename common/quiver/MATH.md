@@ -150,3 +150,110 @@ $$B'_f = \begin{pmatrix} 1 & 1 & 0 \\ 0 & -1 & 0 \\ 0 & 0 & 1 \end{pmatrix}$$
 - 内点 3：$(0, 0, 1)$ → 全非负 → **绿色** ✓
 
 二分性定理成立。变换 $\mu_2$ 将内点 2 从绿变红，其余仍为绿。
+
+---
+
+## 八、SOTA 算法：qme-ng
+
+[qme-ng](https://github.com/mp-bull/qme-ng)（Quiver Mutation Explorer - Next Generation）是目前求解绿红游戏的参考实现，由 Grégoire Dupont 和 Matthieu Pérotin 用 C/C++ 编写。它提供三个算法。
+
+### 算法 1：变异类穷举（Mutation Class Enumeration）
+
+**目标**：计算从箭图 $Q$ 出发，通过变异可达的所有本质不同（同构意义下）箭图的数量 $|\text{Mut}(Q)|$。
+
+**方法**：BFS 遍历 + nauty 同构判定。
+
+1. 将初始箭图 $Q$ 放入队列
+2. 取出一个箭图，对每个顶点分别做一次变异，得到 $n$ 个新箭图
+3. 对每个新箭图，用 [nauty](https://pallini.di.uniroma1.it/) 库计算典范形式（canonical form），与已有箭图比较——同构则丢弃，否则加入队列
+4. 重复直到队列为空
+
+**剪枝优化**：
+
+- **自逆性**：同一顶点连续变异两次为恒等变换，跳过
+- **交换律**：若 $b_{uv} = 0$，则 $\mu_u$ 与 $\mu_v$ 可交换，跳过一种排列
+- **无穷检测**：见第九节
+
+### 算法 2：绿色序列穷举（Green Sequence Exploration）
+
+**目标**：找到从全绿到全红的**所有**极大绿色序列，并统计每种长度的数量。
+
+**方法**：DFS 搜索所有路径。
+
+1. 从 $\text{framed}(A)$ 出发（$B_f = I_n$，全绿）
+2. 当前有 $k$ 个绿色顶点，产生 $k$ 个分支
+3. 对每个分支：
+   - 若无绿色顶点 → 记录一条极大绿色序列及其长度
+   - 若仍有绿色顶点 → 继续递归
+   - 若触发无穷检测（第九节）→ 剪枝放弃
+4. 输出：长度 → 计数的映射
+
+**关键优化**：若两个分支到达**同构的主扩展状态**（由 nauty 判定），则合并为一个分支，累加计数。这避免了对指数级路径空间的重复探索。
+
+### 算法 3：随机绿色序列查找（Randomized Green Finder）
+
+**目标**：在穷举不可行时，尝试找到**一条**极大绿色序列。
+
+**方法**：蒙特卡洛随机游走。
+
+1. 从 $\text{framed}(A)$ 出发
+2. 在当前所有绿色顶点中**均匀随机**选一个做变异
+3. 重复直到全红（成功）、触发无穷检测（失败）、或超过深度上限（失败）
+4. 若失败则从头重试，共尝试指定次数
+
+无启发式策略，纯粹靠随机采样。
+
+### 矩阵表示的差异
+
+qme-ng 使用 $2n \times 2n$ 反对称矩阵（内点和冻结点都有行和列），而本文档使用 $n \times 2n$ 矩阵。两者通过反对称性等价：
+
+$$M[n+j][i] = -M[i][n+j] = -b_{i,n+j}$$
+
+因此 qme-ng 判定绿色的条件"下半块第 $i$ 列全非正"等价于本文档的"$B_f$ 第 $i$ 行全非负"。
+
+---
+
+## 九、有限变异类型与无穷检测
+
+### 有限变异类型分类定理
+
+**定理**（Felikson-Shapiro-Tumarkin [3]）：一个连通箭图（$n \geq 3$）是**有限变异类型**（mutation-finite，即变异类 $|\text{Mut}(Q)| < \infty$）当且仅当其变异类中所有箭图的**边权都 $\leq 2$**。
+
+有限变异类型的完整分类：
+
+- Dynkin 型（$A_n, D_n, E_6, E_7, E_8$）
+- 曲面三角剖分型（marked bordered surfaces 的三角剖分对应的箭图）
+- 11 个例外型
+
+### qme-ng 的无穷检测规则
+
+qme-ng 在变异过程中检测以下两个条件，任一成立则判定变异类无穷并剪枝放弃：
+
+1. **任意边权 $\geq 3$**
+2. **某个顶点关联 $\geq 2$ 条权为 2 的边**
+
+这两个条件都是上述分类定理的推论——满足任一条件的箭图不可能属于有限变异类型。
+
+### 对绿色序列的影响
+
+变异类无穷**不等于**不存在极大绿色序列。已知结果：
+
+| 箭图类型 | 变异类 | 极大绿色序列 |
+|----------|--------|-------------|
+| Dynkin 型（$A, D, E$） | 有限 | 存在，数量有限 [2] |
+| 仿射型（affine） | 无穷 | 存在，数量有限 [2] |
+| 无环箭图（acyclic） | 可能无穷 | 存在（反复变异 source 即可）[2] |
+| 有限变异类型（曲面型等） | 有限 | 几乎都存在，除一次穿孔闭曲面和 $X_7$ 的两个例外 [4] |
+| 最小无穷变异型（rank $\geq 4$） | 无穷 | 存在 [5] |
+
+因此，qme-ng 的无穷检测剪枝对算法 1（变异类穷举）是**数学上正确的**——变异类无穷，穷举不可能完成。但对算法 2、3（绿色序列搜索）是**保守的启发式**——会拒绝处理一些实际上存在绿色序列的箭图（如仿射型、无环型）。
+
+---
+
+## 参考文献
+
+1. S. Fomin, A. Zelevinsky. *Cluster algebras I: Foundations*. J. Amer. Math. Soc. 15 (2002), 497–529.
+2. T. Brüstle, G. Dupont, M. Pérotin. *On Maximal Green Sequences*. Int. Math. Res. Not. 2014(16) (2014), 4547–4586. [arXiv:1205.2050](https://arxiv.org/abs/1205.2050)
+3. A. Felikson, M. Shapiro, P. Tumarkin. *Skew-symmetric cluster algebras of finite mutation type*. J. Eur. Math. Soc. 14(4) (2012), 1135–1180. [arXiv:0811.1703](https://arxiv.org/abs/0811.1703)
+4. G. Mills. *Maximal green sequences for quivers of finite mutation type*. Adv. Math. 319 (2017), 182–210. [arXiv:1606.03799](https://arxiv.org/abs/1606.03799)
+5. A. Seven. *Maximal green sequences of exceptional finite mutation type quivers*. SIGMA 10 (2014), 089.
