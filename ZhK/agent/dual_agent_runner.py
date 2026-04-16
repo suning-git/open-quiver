@@ -266,7 +266,7 @@ class DualAgentSearchRunner:
 
     def _select_state_id(self) -> tuple[str | None, list[dict]]:
         candidates = [
-            s for s in self.store.list_states() if s.status != "solved" and s.status != "dead_end"
+            s for s in self.store.list_states() if s.status != "solved" and s.status != "dead_end" and s.status != "fully_expanded"
         ]
         if not candidates:
             return None, []

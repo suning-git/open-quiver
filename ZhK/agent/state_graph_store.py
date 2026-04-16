@@ -246,6 +246,9 @@ class StateGraphStore:
 
         if from_node.status == "unexpanded":
             from_node.status = "expanded"
+        
+        if self._is_fully_expanded(from_state_id):
+            from_node.status = "fully_expanded"
 
         return to_state_id, edge_id, state_created, edge_created
 
@@ -453,4 +456,12 @@ class StateGraphStore:
         if state_a_id <= state_b_id:
             return (state_a_id, state_b_id, action_vertex)
         return (state_b_id, state_a_id, action_vertex)
+    
+    def _is_fully_expanded(self, state_id: str) -> bool:
+        node = self.get_state(state_id)
+        expanded_actions = {
+            self.get_edge(edge_id).action_vertex
+            for _, edge_id in self.neighbors(state_id)
+        }
+        return len(expanded_actions) >= node.n
 
