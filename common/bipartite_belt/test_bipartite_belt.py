@@ -8,13 +8,13 @@ import numpy as np
 import pytest
 
 from ning.agent.engine import QuiverEngine
-from ning.bipartite_belt.square_product import (
+from common.bipartite_belt.square_product import (
     DynkinGraph,
     SquareProduct,
     dynkin_graph,
     square_product,
 )
-from ning.bipartite_belt.solver import bipartite_belt_solution
+from common.bipartite_belt.solver import bipartite_belt_solution
 
 
 # ── Dynkin graph tests ──────────────────────────────────────────────

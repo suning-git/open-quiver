@@ -10,7 +10,7 @@ References:
       Cluster Algebras", 2026. arXiv:2602.15140 — Proposition 3.1
 """
 
-from ning.bipartite_belt.square_product import SquareProduct
+from common.bipartite_belt.square_product import SquareProduct
 
 
 def bipartite_belt_solution(
